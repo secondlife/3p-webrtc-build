@@ -78,6 +78,7 @@ jobs:
         name: webrtc.${{ matrix.name }}.tar.gz
         path: build/_package/${{ matrix.name }}/webrtc.tar.gz
   build-linux:
+    if: false  
     defaults:
       run:
         working-directory: ./build
@@ -93,7 +94,7 @@ jobs:
           # - ubuntu-18.04_x86_64
           # - ubuntu-20.04_x86_64
           # - ubuntu-22.04_x86_64
-          # - android
+          - android
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
     - uses: actions/checkout@v2
