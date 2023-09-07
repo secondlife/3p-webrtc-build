@@ -183,6 +183,12 @@ PATCHES = {
         'windows_silence_warnings.patch',
         'fix_mocks.patch',
     ],
+    'windows_x86': [
+        'add_license_dav1d.patch',
+        'windows_add_deps.patch',
+        'windows_silence_warnings.patch',
+        'fix_mocks.patch',
+    ],    
     'windows_arm64': [
         'add_license_dav1d.patch',
         'windows_add_deps.patch',
@@ -411,7 +417,7 @@ WEBRTC_BUILD_TARGETS = {
 
 def get_build_targets(target):
     ts = [':default']
-    if target not in ('windows_x86_64', 'windows_arm64', 'ios', 'macos_x86_64', 'macos_arm64'):
+    if target not in ('windows_x86_64', 'windows_x86', 'windows_arm64', 'ios', 'macos_x86_64', 'macos_arm64'):
         ts += ['buildtools/third_party/libc++']
     ts += WEBRTC_BUILD_TARGETS.get(target, [])
     return ts
@@ -662,10 +668,11 @@ def build_webrtc(
             f'rtc_include_tests={"true" if test else "false"}',
             *COMMON_GN_ARGS,
         ]
-        if target in ['windows_x86_64', 'windows_arm64']:
+        if target in ['windows_x86_64', 'windows_x86', 'windows_arm64']:
+            target_cpus = {'windows_x86_64':'x64', 'windows_x86':'x86', 'windows_arm64':'arm64'}
             gn_args += [
                 'target_os="win"',
-                f'target_cpu="{"x64" if target == "windows_x86_64" else "arm64"}"',
+                f'target_cpu="{target_cpus[target]}"',
                 "use_custom_libcxx=false",
             ]
         elif target in ('macos_x86_64', 'macos_arm64'):
@@ -723,7 +730,7 @@ def build_webrtc(
 
     if test:
         cmd(['autoninja', '-C', webrtc_build_dir, 'rtc_unittests'])
-        if target in ['windows_x86_64', 'windows_arm64']:
+        if target in ['windows_x86_64', 'windows_x86', 'windows_arm64']:
             run_unittests_filename = 'rtc_unittests.exe'
         else:
             run_unittests_filename = 'rtc_unittests'
@@ -731,7 +738,7 @@ def build_webrtc(
         run_unittests = os.path.join(webrtc_build_dir, run_unittests_filename)
         cmd([run_unittests])
 
-    if target in ['windows_x86_64', 'windows_arm64']:
+    if target in ['windows_x86_64', 'windows_x86', 'windows_arm64']:
         pass
     elif target in ('macos_x86_64', 'macos_arm64'):
         ar = '/usr/bin/ar'
@@ -774,7 +781,7 @@ def build_webrtc(
 
 
 def copy_headers(webrtc_src_dir, webrtc_package_dir, target):
-    if target in ['windows_x86_64', 'windows_arm64']:
+    if target in ['windows_x86_64', 'windows_x86', 'windows_arm64']:
         # robocopy の戻り値は特殊なので、check=False にしてうまくエラーハンドリングする
         # robocopy's return code is special, so set `check=false` and handle it separately.
         # https://docs.microsoft.com/ja-jp/troubleshoot/windows-server/backup-and-storage/return-codes-used-robocopy-utility
@@ -865,7 +872,7 @@ def package_webrtc(source_dir, build_dir, package_dir, target,
 
     # ライブラリ
     # Library
-    if target in ['windows_x86_64', 'windows_arm64']:
+    if target in ['windows_x86_64', 'windows_x86', 'windows_arm64']:
         files = [
             (['obj', 'webrtc.lib'], ['lib', 'webrtc.lib']),
         ]
@@ -914,7 +921,7 @@ def package_webrtc(source_dir, build_dir, package_dir, target,
     # 圧縮
     # Zip files
     with cd(package_dir):
-        if target in ['windows_x86_64', 'windows_arm64']:
+        if target in ['windows_x86_64', 'windows_x86', 'windows_arm64']:
             with zipfile.ZipFile('webrtc.zip', 'w') as f:
                 for file in enum_all_files('webrtc', '.'):
                     f.write(filename=file, arcname=file)
@@ -926,6 +933,7 @@ def package_webrtc(source_dir, build_dir, package_dir, target,
 
 TARGETS = [
     'windows_x86_64',
+    'windows_x86',
     'windows_arm64',
     'macos_x86_64',
     'macos_arm64',
@@ -948,7 +956,7 @@ def check_target(target):
 
     if platform.system() == 'Windows':
         logging.info(f'OS: {platform.system()}')
-        return target in ['windows_x86_64', 'windows_arm64']
+        return target in ['windows_x86_64', 'windows_x86', 'windows_arm64']
     elif platform.system() == 'Darwin':
         logging.info(f'OS: {platform.system()}')
         return target in ('macos_x86_64', 'macos_arm64', 'ios')
@@ -1086,7 +1094,7 @@ def main():
             package_dir = args.package_dir
         webrtc_package_dir = os.path.abspath(args.webrtc_package_dir) if args.webrtc_package_dir is not None else None
 
-    if args.target in ['windows_x86_64', 'windows_arm64']:
+    if args.target in ['windows_x86_64', 'windows_x86', 'windows_arm64']:
         # Windows の WebRTC ビルドに必要な環境変数の設定
         # Setting environment variables required for Windows WebRTC build
         mkdir_p(build_dir)
@@ -1123,7 +1131,7 @@ def main():
 
             dir = get_depot_tools(source_dir, fetch=args.depottools_fetch)
             add_path(dir)
-            if args.target in ['windows_x86_64', 'windows_arm64']:
+            if args.target in ['windows_x86_64', 'windows_x86', 'windows_arm64']:
                 cmd(['git', 'config', '--global', 'core.longpaths', 'true'])
 
             commit = version_info.webrtc_commit
