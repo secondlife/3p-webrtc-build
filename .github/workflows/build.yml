@@ -53,8 +53,8 @@ jobs:
     - name: Upload Artifact
       uses: actions/upload-artifact@v1
       with:
-        name: webrtc.${{ matrix.name }}.zip
-        path: build\_package\${{ matrix.name }}\webrtc.zip
+        name: webrtc.${{ matrix.name }}.bz2
+        path: build\_package\${{ matrix.name }}\webrtc.bz2
   build-macos:
     defaults:
       run:
@@ -76,8 +76,8 @@ jobs:
     - name: Upload Artifact
       uses: actions/upload-artifact@v1
       with:
-        name: webrtc.${{ matrix.name }}.tar.gz
-        path: build/_package/${{ matrix.name }}/webrtc.tar.gz
+        name: webrtc.${{ matrix.name }}.tar.bz2
+        path: build/_package/${{ matrix.name }}/webrtc.tar.bz2
   build-linux:
     if: false  
     defaults:
@@ -113,8 +113,8 @@ jobs:
     - name: Upload Artifact
       uses: actions/upload-artifact@v1
       with:
-        name: webrtc.${{ matrix.name }}.tar.gz
-        path: build/_package/${{ matrix.name }}/webrtc.tar.gz
+        name: webrtc.${{ matrix.name }}.tar.bz2
+        path: build/_package/${{ matrix.name }}/webrtc.tar.bz2
   upload-assets:
     strategy:
       fail-fast: false
@@ -122,7 +122,10 @@ jobs:
         name:
           - macos_arm64
           - macos_x86_64
-          - ios
+          - windows_x86_64
+          # - windows_arm64
+          - windows_x86          
+          # - ios
           # - raspberry-pi-os_armv6
           # - raspberry-pi-os_armv7
           # - raspberry-pi-os_armv8
@@ -136,6 +139,7 @@ jobs:
     if: contains(github.ref, 'tags/m')
     needs:
       - build-macos
+      - build-windows
       # - build-linux
     runs-on: ubuntu-latest
     steps:
@@ -144,44 +148,13 @@ jobs:
     - name: Download ${{ matrix.name }}
       uses: actions/download-artifact@v1
       with:
-        name: webrtc.${{ matrix.name }}.tar.gz
+        name: webrtc.${{ matrix.name }}.tar.bz2
     - name: Upload ${{ matrix.name }} Release Asset
       uses: actions/upload-release-asset@v1.0.1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ github.event.release.upload_url }}
-        asset_path: webrtc.${{ matrix.name }}.tar.gz/webrtc.tar.gz
-        asset_name: webrtc.${{ matrix.name }}.tar.gz
-        asset_content_type: application/gzip
-  # Windows だけ Content-Type が違うので別で記述する
-  # Windows has a different Content-Type, so handle it separately.
-  upload-assets-windows:
-    strategy:
-      fail-fast: false
-      matrix:
-        name:
-          - windows_x86_64
-          # - windows_arm64
-          - windows_x86
-    name: Upload windows
-    if: contains(github.ref, 'tags/m')
-    needs:
-      - build-windows
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Download ${{ matrix.name }}
-      uses: actions/download-artifact@v1
-      with:
-        name: webrtc.${{ matrix.name }}.zip
-    - name: Upload windows Release Asset
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: webrtc.${{ matrix.name }}.zip/webrtc.zip
-        asset_name: webrtc.${{ matrix.name }}.zip
-        asset_content_type: application/zip
+        asset_path: webrtc.${{ matrix.name }}.tar.bz2/webrtc.tar.bz2
+        asset_name: webrtc.${{ matrix.name }}.tar.bz2
+        asset_content_type: application/bz2
