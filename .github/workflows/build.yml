@@ -5,35 +5,45 @@ on:
     inputs:
       commitHash:
         description: 'webrtc-sdk commit hash'
-        default: ''
+        default: 'm114_release'
         required: true
-      configuration:
-        description: 'build configuration'
-        default: 'release'
-        required: true
-        type: choice
-        options:
-          - release
-          - debug
-  push:
-    paths-ignore:
-      - '**.md'
-      - 'LICENSE'
-      - 'NOTICE'
-      - '.gitignore'
-      - '.dockerignore'
-    branches-ignore:
-      - daily
-    tags:
-      - '*'
 
-permissions:
-  packages: write
-  contents: write
-  actions: read
 
 jobs:
-  build-apple:
+  build-windows:
+    defaults:
+      run:
+        working-directory: .\\build
+    strategy:
+      fail-fast: false
+      matrix:
+        name:
+          - windows_x86_64
+    runs-on: windows-2019
+    steps:
+    - uses: actions/checkout@v4
+    - name: Disk Cleanup
+      run: |
+        Get-PSDrive
+        # Cache 済み Docker Image の削除
+        # Clean unused docker images
+        docker rmi $(docker images -q -a)
+        # Android SDK の削除
+        # Delete Android SDK
+        Remove-Item -Recurse -Force $Env:ANDROID_HOME -ErrorAction Ignore
+        Remove-Item -Recurse -Force $Env:ANDROID_NDK_HOME -ErrorAction Ignore
+        # JVM の削除
+        # Delete JVM
+        Remove-Item -Recurse -Force $Env:JAVA_HOME_11_X64 -ErrorAction Ignore
+        Remove-Item -Recurse -Force $Env:JAVA_HOME_8_X64 -ErrorAction Ignore
+        Get-PSDrive
+    - run: "& .\\build.${{ matrix.name }}.ps1 \"${{ github.event.inputs.commitHash }}\""
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: webrtc.${{ matrix.name }}.bz2
+        path: build\_package\${{ matrix.name }}\webrtc.tar.bz2
+  build-macos:
     defaults:
       run:
         working-directory: ./build
@@ -54,8 +64,8 @@ jobs:
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ steps.build.outputs.framework_name }}.xcframework.zip
-        path: build/_package/${{ matrix.name }}/${{ steps.build.outputs.framework_name }}.xcframework.zip
+        name: webrtc.${{ matrix.name }}.tar.bz2
+        path: build/_package/${{ matrix.name }}/webrtc.tar.bz2
   build-linux:
     defaults:
       run:
@@ -64,41 +74,23 @@ jobs:
       fail-fast: false
       matrix:
         name:
-          - android
-          - android_prefixed
-          - android_prefixed_stripped
-    runs-on: namespace-profile-webrtc-android
+          # - raspberry-pi-os_armv6
+          # - raspberry-pi-os_armv7
+          # - raspberry-pi-os_armv8
+          # - ubuntu-18.04_armv8
+          # - ubuntu-20.04_armv8
+          # - ubuntu-18.04_x86_64
+          - ubuntu-20.04_x86_64
+          # - ubuntu-22.04_x86_64
+          # - android
+          # - android_prefixed
+          # - android_prefixed_stripped
+    runs-on: linux-large 
     steps:
     - uses: actions/checkout@v4
     - run: ./build.${{ matrix.name }}.sh "${{ github.event.inputs.commitHash }}"
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: webrtc.${{ matrix.name }}.tar.gz
-        path: build/_package/${{ matrix.name }}/webrtc.tar.gz
-  create-release:
-    name: Create Release
-    if: github.ref_type == 'tag'
-    needs:
-      - build-apple
-      - build-linux
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - uses: actions/download-artifact@v4
-      with:
-        path: artifacts
-        name: webrtc.android_prefixed.tar.gz
-    - uses: actions/download-artifact@v4
-      with:
-        path: artifacts
-        name: webrtc.android_prefixed_stripped.tar.gz
-    - uses: actions/download-artifact@v4
-      with:
-        path: artifacts
-        name: LiveKitWebRTC.xcframework.zip
-    - uses: softprops/action-gh-release@v2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        files: artifacts/**
+        name: webrtc.${{ matrix.name }}.tar.bz2
+        path: build/_package/${{ matrix.name }}/webrtc.tar.bz2
