@@ -29,7 +29,6 @@ jobs:
       matrix:
         name:
           - windows_x86_64
-          - windows_arm64
     runs-on: windows-2019
     steps:
     - uses: actions/checkout@v2
@@ -62,9 +61,9 @@ jobs:
       fail-fast: false
       matrix:
         name:
-          - macos_arm64
+          # - macos_arm64
           - macos_x86_64
-          - ios
+          # - ios
     runs-on: macos-11
     steps:
     - uses: actions/checkout@v2
@@ -147,7 +146,7 @@ jobs:
       matrix:
         name:
           # - macos_arm64
-          # - macos_x86_64
+          - macos_x86_64
           # - ios
           # - raspberry-pi-os_armv6
           # - raspberry-pi-os_armv7
@@ -157,8 +156,7 @@ jobs:
           # - ubuntu-18.04_x86_64
           # - ubuntu-20.04_x86_64
           # - ubuntu-22.04_x86_64
-          - android
-          - android_prefixed
+          # - android
     name: Release ${{ matrix.name }}
     if: contains(github.ref, 'tags/m')
     needs:
@@ -197,7 +195,6 @@ jobs:
       matrix:
         name:
           - windows_x86_64
-          - windows_arm64
     name: Upload windows
     if: contains(github.ref, 'tags/m')
     needs:
