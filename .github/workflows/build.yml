@@ -67,7 +67,6 @@ jobs:
         name: webrtc.${{ matrix.name }}.tar.bz2
         path: build/_package/${{ matrix.name }}/webrtc.tar.bz2
   build-linux:
-    if: false  
     defaults:
       run:
         working-directory: ./build
