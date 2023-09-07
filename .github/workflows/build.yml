@@ -120,7 +120,7 @@ jobs:
     needs:
       - build-windows
       - build-macos
-      - build-linux
+      # - build-linux
     runs-on: ubuntu-20.04
     steps:
     - name: Create Release
@@ -157,7 +157,7 @@ jobs:
           # - ubuntu-18.04_x86_64
           # - ubuntu-20.04_x86_64
           # - ubuntu-22.04_x86_64
-          - android
+          # - android
     name: Release ${{ matrix.name }}
     if: contains(github.ref, 'tags/m')
     needs:
