@@ -5,7 +5,7 @@ on:
     inputs:
       commitHash:
         description: 'webrtc-sdk commit hash'
-        default: ''
+        default: 'm114_release'
         required: true
   push:
     paths-ignore:
