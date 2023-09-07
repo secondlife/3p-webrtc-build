@@ -921,14 +921,9 @@ def package_webrtc(source_dir, build_dir, package_dir, target,
     # 圧縮
     # Zip files
     with cd(package_dir):
-        if target in ['windows_x86_64', 'windows_x86', 'windows_arm64']:
-            with zipfile.ZipFile('webrtc.zip', 'w') as f:
-                for file in enum_all_files('webrtc', '.'):
-                    f.write(filename=file, arcname=file)
-        else:
-            with tarfile.open('webrtc.tar.gz', 'w:gz') as f:
-                for file in enum_all_files('webrtc', '.'):
-                    f.add(name=file, arcname=file)
+        with tarfile.open('webrtc.tar.bz2', 'w:bz2') as f:
+            for file in enum_all_files('webrtc', '.'):
+                f.add(name=file, arcname=file)
 
 
 TARGETS = [
