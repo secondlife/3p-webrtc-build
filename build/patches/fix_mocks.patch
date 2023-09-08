@@ -14,12 +14,10 @@ diff --git a/pc/test/fake_audio_capture_module.h b/pc/test/fake_audio_capture_mo
 index c04373cdfd..ab6ff3492a 100644
 --- a/pc/test/fake_audio_capture_module.h
 +++ b/pc/test/fake_audio_capture_module.h
-@@ -137,6 +137,8 @@ class FakeAudioCaptureModule : public webrtc::AudioDeviceModule {
+@@ -137,4 +137,5 @@ class FakeAudioCaptureModule : public webrtc::AudioDeviceModule {
  
    int32_t GetPlayoutUnderrunCount() const override { return -1; }
  
 +  int32_t SetAudioDeviceSink(webrtc::AudioDeviceSink* sink) const override { return 0; }
-+
    absl::optional<webrtc::AudioDeviceModule::Stats> GetStats() const override {
-     return webrtc::AudioDeviceModule::Stats();
-   }
+
