@@ -94,7 +94,12 @@ jobs:
         # 17GB
         sudo rm -rf /usr/share/dotnet
         df -h
-    - run: ./build.${{ matrix.name }}.sh "${{ github.event.inputs.commitHash }}"
+    - name: Determine Release Tag
+      env:
+        RELEASE: ${{ github.ref_name }}
+      id: release_tag
+      run: echo "::set-output name=tag::${RELEASE%.*/}"
+    - run: ./build.${{ matrix.name }}.sh "${{ steps.release_tag.outputs.tag }}"
     - name: Upload Artifact
       uses: actions/upload-artifact@v1
       with:
