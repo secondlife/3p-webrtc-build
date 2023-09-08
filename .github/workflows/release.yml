@@ -25,7 +25,7 @@ jobs:
       id: release_tag
       run: |
         $tag = $Env:RELEASE.split(".")[0]
-        "tag=$tag" | Out-File $Env:GITHUB_OUTPUT          
+        echo "tag=$tag" | Out-File -FilePath $Env:GITHUB_OUTPUT -Encoding utf8 -Append         
     - name: Disk Cleanup
       run: |
         Get-PSDrive
@@ -41,7 +41,7 @@ jobs:
         Remove-Item -Recurse -Force $Env:JAVA_HOME_11_X64 -ErrorAction Ignore
         Remove-Item -Recurse -Force $Env:JAVA_HOME_8_X64 -ErrorAction Ignore
         Get-PSDrive
-    - run: "& .\\build.${{ matrix.name }}.ps1 \"${{ steps.release_tag.outputs.tag }}\""
+    - run: "& .\\build.${{ matrix.name }}.ps1 \"${{ steps.release_tag.outputs.tag }}_release\""
     - name: Upload Artifact
       uses: actions/upload-artifact@v1
       with:
@@ -69,7 +69,7 @@ jobs:
         RELEASE: ${{ github.ref_name }}
       id: release_tag
       run: echo "tag=${RELEASE%%.*}" >> "$GITHUB_OUTPUT"     
-    - run: ./build.${{ matrix.name }}.sh "${{ steps.release_tag.outputs.tag }}"    
+    - run: ./build.${{ matrix.name }}.sh "${{ steps.release_tag.outputs.tag }}_release"    
     - name: Upload Artifact
       uses: actions/upload-artifact@v1
       with:
@@ -111,7 +111,7 @@ jobs:
         RELEASE: ${{ github.ref_name }}
       id: release_tag
       run: echo "tag=${RELEASE%%.*}" >> "$GITHUB_OUTPUT"     
-    - run: ./build.${{ matrix.name }}.sh "${{ steps.release_tag.outputs.tag }}"
+    - run: ./build.${{ matrix.name }}.sh "${{ steps.release_tag.outputs.tag }}_release"
     - name: Upload Artifact
       uses: actions/upload-artifact@v1
       with:
