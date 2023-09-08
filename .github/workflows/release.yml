@@ -38,7 +38,7 @@ jobs:
     - name: Upload Artifact
       uses: actions/upload-artifact@v1
       with:
-        name: webrtc.${{ matrix.name }}.bz2
+        name: webrtc.${{ matrix.name }}.tar.bz2
         path: build\_package\${{ matrix.name }}\webrtc.tar.bz2
   build-macos:
     defaults:
