@@ -37,8 +37,11 @@ jobs:
     - name: Determine Release Tag
       env:
         RELEASE: ${{ github.ref_name }}
-      run: echo "tag=${RELEASE%%.*}" >> "$GITHUB_STATE"     
-    - run: "& .\\build.${{ matrix.name }}.ps1 \"$tag\""
+      id: release_tag
+      run: |
+        $tag = $Env:RELEASE".split(".")[0]
+        "tag=$tag" | Out-File $Env:GITHUB_OUTPUT      
+    - run: "& .\\build.${{ matrix.name }}.ps1 \"${{ steps.release_tag.outputs.tag }}\""
     - name: Upload Artifact
       uses: actions/upload-artifact@v1
       with:
@@ -64,8 +67,9 @@ jobs:
     - name: Determine Release Tag
       env:
         RELEASE: ${{ github.ref_name }}
-      run: echo "tag=${RELEASE%%.*}" >> "$GITHUB_STATE"     
-    - run: ./build.${{ matrix.name }}.sh "$tag"    
+      id: release_tag
+      run: echo "tag=${RELEASE%%.*}" >> "$GITHUB_OUTPUT"     
+    - run: ./build.${{ matrix.name }}.sh "${{ steps.release_tag.outputs.tag }}"    
     - name: Upload Artifact
       uses: actions/upload-artifact@v1
       with:
@@ -105,8 +109,9 @@ jobs:
     - name: Determine Release Tag
       env:
         RELEASE: ${{ github.ref_name }}
-      run: echo "tag=${RELEASE%%.*}" >> "$GITHUB_STATE"     
-    - run: ./build.${{ matrix.name }}.sh "$tag"    
+      id: release_tag
+      run: echo "tag=${RELEASE%%.*}" >> "$GITHUB_OUTPUT"     
+    - run: ./build.${{ matrix.name }}.sh "${{ steps.release_tag.outputs.tag }}"
     - name: Upload Artifact
       uses: actions/upload-artifact@v1
       with:
