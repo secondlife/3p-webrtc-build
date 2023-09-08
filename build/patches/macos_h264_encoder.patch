@@ -1,0 +1,18 @@
+diff --git a/sdk/objc/components/video_codec/RTCVideoEncoderH264.mm b/sdk/objc/components/video_codec/RTCVideoEncoderH264.mm
+index d3dd33aef6..0b1e25f0ee 100644
+--- a/sdk/objc/components/video_codec/RTCVideoEncoderH264.mm
++++ b/sdk/objc/components/video_codec/RTCVideoEncoderH264.mm
+@@ -755,8 +755,8 @@ NSUInteger GetMaxSampleRate(const webrtc::H264ProfileLevelId &profile_level_id)
+     if (_codecMode == RTCVideoCodecModeScreensharing) {
+       RTC_LOG(LS_INFO) << "Configuring VideoToolbox to use maxQP: " << kHighH264QpThreshold
+                        << " mode: " << _codecMode;
+-      SetVTSessionProperty(
+-          _compressionSession, kVTCompressionPropertyKey_MaxAllowedFrameQP, kHighH264QpThreshold);
++      //SetVTSessionProperty(
++      //    _compressionSession, kVTCompressionPropertyKey_MaxAllowedFrameQP, kHighH264QpThreshold);
+     }
+   }
+   SetVTSessionProperty(
+-- 
+
+
