@@ -171,7 +171,7 @@ def get_depot_tools(source_dir, fetch=False):
 
 
 PATCH_INFO = {
-    'macos_h264_encoder.patch': (2, []),
+    # 'macos_h264_encoder.patch': (2, []),
     # 'macos_screen_capture.patch': (2, []),
     # 'macos_use_xcode_clang.patch': (1, ['build']),
 }
@@ -202,14 +202,17 @@ PATCHES = {
     'macos_x86_64': [
         'add_license_dav1d.patch',
         'fix_mocks.patch',
+        'macos_h264_encoder.patch'
     ],
     'macos_arm64': [
         'add_license_dav1d.patch',
         'fix_mocks.patch',
+        'macos_h264_encoder.patch'
     ],
     'ios': [
         'add_license_dav1d.patch',
         'fix_mocks.patch',
+        'macos_h264_encoder.patch'
     ],
     'android': [
         'add_license_dav1d.patch',
