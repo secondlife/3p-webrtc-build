@@ -7,17 +7,7 @@ on:
         description: 'webrtc-sdk commit hash'
         default: 'm114_release'
         required: true
-  push:
-    paths-ignore:
-      - '**.md'
-      - 'LICENSE'
-      - 'NOTICE'
-      - '.gitignore'
-      - '.dockerignore'
-    branches-ignore:
-      - daily
-    tags:
-      - '*'
+
 
 jobs:
   build-windows:
