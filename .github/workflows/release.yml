@@ -34,7 +34,12 @@ jobs:
         Remove-Item -Recurse -Force $Env:JAVA_HOME_11_X64 -ErrorAction Ignore
         Remove-Item -Recurse -Force $Env:JAVA_HOME_8_X64 -ErrorAction Ignore
         Get-PSDrive
-    - run: "& .\\build.${{ matrix.name }}.ps1 \"${{ github.event.inputs.commitHash }}\""
+    - name: Determine Release Tag
+      env:
+        RELEASE: ${{ github.ref_name }}
+      id: release_tag
+      run: echo "::set-output name=tag::${RELEASE%.*/}"     
+    - run: "& .\\build.${{ matrix.name }}.ps1 \"${{ steps.release_tag.outputs.tag }}\""
     - name: Upload Artifact
       uses: actions/upload-artifact@v1
       with:
@@ -57,7 +62,12 @@ jobs:
     - name: Select Xcode 13.0
       run: sudo xcode-select --switch /Applications/Xcode_13.0.app/Contents/Developer
     - run: brew install ninja
-    - run: ./build.${{ matrix.name }}.sh "${{ github.event.inputs.commitHash }}"
+    - name: Determine Release Tag
+      env:
+        RELEASE: ${{ github.ref_name }}
+      id: release_tag
+      run: echo "::set-output name=tag::${RELEASE%.*/}"
+    - run: ./build.${{ matrix.name }}.sh "${{ steps.release_tag.outputs.tag }}"    
     - name: Upload Artifact
       uses: actions/upload-artifact@v1
       with:
