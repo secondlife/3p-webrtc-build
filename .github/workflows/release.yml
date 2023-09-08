@@ -1,12 +1,8 @@
 name: build
 
 on:
-  workflow_dispatch:
-    inputs:
-      commitHash:
-        description: 'webrtc-sdk commit hash'
-        default: 'm114_release'
-        required: true
+  release:
+    types: [published]
   push:
     paths-ignore:
       - '**.md'
@@ -14,10 +10,6 @@ on:
       - 'NOTICE'
       - '.gitignore'
       - '.dockerignore'
-    branches-ignore:
-      - daily
-    tags:
-      - '*'
 
 jobs:
   build-windows:
@@ -29,6 +21,8 @@ jobs:
       matrix:
         name:
           - windows_x86_64
+          # - windows_arm64
+          - windows_x86
     runs-on: windows-2019
     steps:
     - uses: actions/checkout@v2
@@ -94,7 +88,6 @@ jobs:
           # - ubuntu-20.04_x86_64
           # - ubuntu-22.04_x86_64
           - android
-          - android_prefixed
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
     - uses: actions/checkout@v2
@@ -114,4 +107,46 @@ jobs:
       with:
         name: webrtc.${{ matrix.name }}.tar.bz2
         path: build/_package/${{ matrix.name }}/webrtc.tar.bz2
-
+  upload-assets:
+    strategy:
+      fail-fast: false
+      matrix:
+        name:
+          # - macos_arm64
+          - macos_x86_64
+          - windows_x86_64
+          # - windows_arm64
+          - windows_x86          
+          # - ios
+          # - raspberry-pi-os_armv6
+          # - raspberry-pi-os_armv7
+          # - raspberry-pi-os_armv8
+          # - ubuntu-18.04_armv8
+          # - ubuntu-20.04_armv8
+          # - ubuntu-18.04_x86_64
+          # - ubuntu-20.04_x86_64
+          # - ubuntu-22.04_x86_64
+          # - android
+    name: Release ${{ matrix.name }}
+    if: contains(github.ref, 'tags/m')
+    needs:
+      - build-macos
+      - build-windows
+      # - build-linux
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Download ${{ matrix.name }}
+      uses: actions/download-artifact@v1
+      with:
+        name: webrtc.${{ matrix.name }}.tar.bz2
+    - name: Upload ${{ matrix.name }} Release Asset
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: webrtc.${{ matrix.name }}.tar.bz2/webrtc.tar.bz2
+        asset_name: webrtc.${{ matrix.name }}.tar.bz2
+        asset_content_type: application/bz2
