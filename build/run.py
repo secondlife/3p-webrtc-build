@@ -667,6 +667,7 @@ def build_webrtc(
                 'target_os="win"',
                 f'target_cpu="{target_cpus[target]}"',
                 "use_custom_libcxx=false",
+                "use_custom_libcxx_for_host=true"
             ]
         elif target in ('macos_x86_64', 'macos_arm64'):
             gn_args += [
