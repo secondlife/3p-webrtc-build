@@ -19,6 +19,13 @@ jobs:
     runs-on: windows-2019
     steps:
     - uses: actions/checkout@v2
+    - name: Determine Release Tag
+      env:
+        RELEASE: ${{ github.ref_name }}
+      id: release_tag
+      run: |
+        $tag = $Env:RELEASE".split(".")[0]
+        "tag=$tag" | Out-File $Env:GITHUB_OUTPUT          
     - name: Disk Cleanup
       run: |
         Get-PSDrive
@@ -34,13 +41,6 @@ jobs:
         Remove-Item -Recurse -Force $Env:JAVA_HOME_11_X64 -ErrorAction Ignore
         Remove-Item -Recurse -Force $Env:JAVA_HOME_8_X64 -ErrorAction Ignore
         Get-PSDrive
-    - name: Determine Release Tag
-      env:
-        RELEASE: ${{ github.ref_name }}
-      id: release_tag
-      run: |
-        $tag = $Env:RELEASE".split(".")[0]
-        "tag=$tag" | Out-File $Env:GITHUB_OUTPUT      
     - run: "& .\\build.${{ matrix.name }}.ps1 \"${{ steps.release_tag.outputs.tag }}\""
     - name: Upload Artifact
       uses: actions/upload-artifact@v1
