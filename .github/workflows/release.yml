@@ -24,7 +24,7 @@ jobs:
         RELEASE: ${{ github.ref_name }}
       id: release_tag
       run: |
-        $tag = $Env:RELEASE".split(".")[0]
+        $tag = $Env:RELEASE.split(".")[0]
         "tag=$tag" | Out-File $Env:GITHUB_OUTPUT          
     - name: Disk Cleanup
       run: |
