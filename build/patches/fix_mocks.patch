@@ -24,3 +24,4 @@ index b5b1574818..084d02caed 100644
    std::optional<webrtc::AudioDeviceModule::Stats> GetStats() const override {
      return webrtc::AudioDeviceModule::Stats();
    }
+
