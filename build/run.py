@@ -182,18 +182,21 @@ PATCHES = {
         'windows_add_deps.patch',
         'windows_silence_warnings.patch',
         'fix_mocks.patch',
+        'is_pod-is-deprecated.patch',
     ],
     'windows_x86': [
         'add_license_dav1d.patch',
         'windows_add_deps.patch',
         'windows_silence_warnings.patch',
         'fix_mocks.patch',
+        'is_pod-is-deprecated.patch',
     ],    
     'windows_arm64': [
         'add_license_dav1d.patch',
         'windows_add_deps.patch',
         'windows_silence_warnings.patch',
         'fix_mocks.patch',
+        'is_pod-is-deprecated.patch',
     ],
     'macos_x86_64': [
         'add_license_dav1d.patch',
