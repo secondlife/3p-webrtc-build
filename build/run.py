@@ -182,70 +182,88 @@ PATCHES = {
         'windows_add_deps.patch',
         'windows_silence_warnings.patch',
         'fix_mocks.patch',
+        'is_pod-is-deprecated.patch',
+        'upsample-to-48khz-for-echo-cancellation-for-now.patch',
     ],
     'windows_x86': [
         'add_license_dav1d.patch',
         'windows_add_deps.patch',
         'windows_silence_warnings.patch',
         'fix_mocks.patch',
+        'is_pod-is-deprecated.patch',
+        'upsample-to-48khz-for-echo-cancellation-for-now.patch',
     ],    
     'windows_arm64': [
         'add_license_dav1d.patch',
         'windows_add_deps.patch',
         'windows_silence_warnings.patch',
         'fix_mocks.patch',
+        'is_pod-is-deprecated.patch',
+        'upsample-to-48khz-for-echo-cancellation-for-now.patch',
     ],
     'macos_x86_64': [
         'add_license_dav1d.patch',
         'fix_mocks.patch',
-        'macos_h264_encoder.patch'
+        'macos_h264_encoder.patch',
+        'upsample-to-48khz-for-echo-cancellation-for-now.patch',
     ],
     'macos_arm64': [
         'add_license_dav1d.patch',
         'fix_mocks.patch',
-        'macos_h264_encoder.patch'
+        'macos_h264_encoder.patch',
+        'upsample-to-48khz-for-echo-cancellation-for-now.patch',
     ],
     'ios': [
         'add_license_dav1d.patch',
         'fix_mocks.patch',
-        'macos_h264_encoder.patch'
+        'macos_h264_encoder.patch',
+        'upsample-to-48khz-for-echo-cancellation-for-now.patch',
     ],
     'android': [
         'add_license_dav1d.patch',
         'android_webrtc_version.patch',
         'fix_mocks.patch',
+        'upsample-to-48khz-for-echo-cancellation-for-now.patch',
     ],
     'raspberry-pi-os_armv6': [
         'add_license_dav1d.patch',
         'fix_mocks.patch',
+        'upsample-to-48khz-for-echo-cancellation-for-now.patch',
     ],
     'raspberry-pi-os_armv7': [
         'add_license_dav1d.patch',
         'fix_mocks.patch',
+        'upsample-to-48khz-for-echo-cancellation-for-now.patch',
     ],
     'raspberry-pi-os_armv8': [
         'add_license_dav1d.patch',
         'fix_mocks.patch',
+        'upsample-to-48khz-for-echo-cancellation-for-now.patch',
     ],
     'ubuntu-18.04_armv8': [
         'add_license_dav1d.patch',
         'fix_mocks.patch',
+        'upsample-to-48khz-for-echo-cancellation-for-now.patch',
     ],
     'ubuntu-20.04_armv8': [
         'add_license_dav1d.patch',
         'fix_mocks.patch',
+        'upsample-to-48khz-for-echo-cancellation-for-now.patch',
     ],
     'ubuntu-18.04_x86_64': [
         'add_license_dav1d.patch',
         'fix_mocks.patch',
+        'upsample-to-48khz-for-echo-cancellation-for-now.patch',
     ],
     'ubuntu-20.04_x86_64': [
         'add_license_dav1d.patch',
         'fix_mocks.patch',
+        'upsample-to-48khz-for-echo-cancellation-for-now.patch',
     ],
     'ubuntu-22.04_x86_64': [
         'add_license_dav1d.patch',
         'fix_mocks.patch',
+        'upsample-to-48khz-for-echo-cancellation-for-now.patch',
     ],
 }
 
