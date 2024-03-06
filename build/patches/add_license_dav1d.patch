@@ -1,17 +1,9 @@
 diff --git a/tools_webrtc/libs/generate_licenses.py b/tools_webrtc/libs/generate_licenses.py
-<<<<<<< HEAD
 index d945b43cca..f09ed3702b 100755
 --- a/tools_webrtc/libs/generate_licenses.py
 +++ b/tools_webrtc/libs/generate_licenses.py
-@@ -90,6 +90,11 @@ LIB_TO_LICENSES_DICT = {
-     'yasm': [],
-=======
-index d945b43cca..9ac6c94983 100755
---- a/tools_webrtc/libs/generate_licenses.py
-+++ b/tools_webrtc/libs/generate_licenses.py
-@@ -86,6 +86,12 @@ LIB_TO_LICENSES_DICT = {
+@@ -86,6 +86,11 @@ LIB_TO_LICENSES_DICT = {
      # Compile time dependencies, no license needed:
->>>>>>> Fix h264 mac build issue (we don't use it anyway)
      'ow2_asm': [],
      'jdk': [],
 +
@@ -22,8 +14,4 @@ index d945b43cca..9ac6c94983 100755
  }
  
  # Third_party library _regex_ to licences mapping. Keys are regular expression
-<<<<<<< HEAD
  
-=======
--- 
->>>>>>> Fix h264 mac build issue (we don't use it anyway)
