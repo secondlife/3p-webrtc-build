@@ -1,5 +1,5 @@
 diff --git a/modules/audio_device/include/mock_audio_device.h b/modules/audio_device/include/mock_audio_device.h
-index 73fbdd547d..22acdfad8e 100644
+index 8483aa3da8..f66cdca0ba 100644
 --- a/modules/audio_device/include/mock_audio_device.h
 +++ b/modules/audio_device/include/mock_audio_device.h
 @@ -149,6 +149,7 @@ class MockAudioDeviceModule : public AudioDeviceModule {
@@ -14,7 +14,7 @@ diff --git a/pc/test/fake_audio_capture_module.h b/pc/test/fake_audio_capture_mo
 index c04373cdfd..ab6ff3492a 100644
 --- a/pc/test/fake_audio_capture_module.h
 +++ b/pc/test/fake_audio_capture_module.h
-@@ -137,7 +137,8 @@ class FakeAudioCaptureModule : public webrtc::AudioDeviceModule {
+@@ -137,6 +137,8 @@ class FakeAudioCaptureModule : public webrtc::AudioDeviceModule {
  
    int32_t GetPlayoutUnderrunCount() const override { return -1; }
  
@@ -23,5 +23,3 @@ index c04373cdfd..ab6ff3492a 100644
    absl::optional<webrtc::AudioDeviceModule::Stats> GetStats() const override {
      return webrtc::AudioDeviceModule::Stats();
    }
----
-
