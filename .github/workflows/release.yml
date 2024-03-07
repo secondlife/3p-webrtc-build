@@ -122,34 +122,6 @@ jobs:
       with:
         name: webrtc.${{ matrix.name }}.tar.bz2
         path: build/_package/${{ matrix.name }}/webrtc.tar.bz2
-  upload-assets:
-    strategy:
-      fail-fast: false
-      matrix:
-        name:
-          # - macos_arm64
-          - macos_x86_64
-          - windows_x86_64
-          # - windows_arm64
-          # - windows_x86          
-          # - ios
-          # - raspberry-pi-os_armv6
-          # - raspberry-pi-os_armv7
-          # - raspberry-pi-os_armv8
-          # - ubuntu-18.04_armv8
-          # - ubuntu-20.04_armv8
-          # - ubuntu-18.04_x86_64
-          # - ubuntu-20.04_x86_64
-          # - ubuntu-22.04_x86_64
-          # - android
-    name: Release ${{ matrix.name }}
-    if: contains(github.ref, 'tags/m')
-    needs:
-      - build-macos
-      - build-windows
-      # - build-linux
-    runs-on: ubuntu-latest
-    steps:
     - name: Upload ${{ matrix.name }} Release Asset
       uses: actions/upload-release-asset@v1.0.1
       env:
