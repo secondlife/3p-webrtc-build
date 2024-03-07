@@ -184,6 +184,7 @@ PATCHES = {
         'fix_mocks.patch',
         'is_pod-is-deprecated.patch',
         'upsample-to-48khz-for-echo-cancellation-for-now.patch',
+        'msvc-checks-template.patch',
     ],
     'windows_x86': [
         'add_license_dav1d.patch',
@@ -192,7 +193,8 @@ PATCHES = {
         'fix_mocks.patch',
         'is_pod-is-deprecated.patch',
         'upsample-to-48khz-for-echo-cancellation-for-now.patch',
-    ],    
+        'msvc-checks-template.patch',
+    ],
     'windows_arm64': [
         'add_license_dav1d.patch',
         'windows_add_deps.patch',
@@ -200,6 +202,7 @@ PATCHES = {
         'fix_mocks.patch',
         'is_pod-is-deprecated.patch',
         'upsample-to-48khz-for-echo-cancellation-for-now.patch',
+        'msvc-checks-template.patch'
     ],
     'macos_x86_64': [
         'add_license_dav1d.patch',
