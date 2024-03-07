@@ -126,7 +126,7 @@ jobs:
           - macos_x86_64
           - windows_x86_64
           # - windows_arm64
-          - windows_x86          
+          # - windows_x86          
           # - ios
           # - raspberry-pi-os_armv6
           # - raspberry-pi-os_armv7
