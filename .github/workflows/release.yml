@@ -25,7 +25,8 @@ jobs:
       id: release_tag
       run: |
         $tag = $Env:RELEASE.split(".")[0]
-        echo "tag=$tag" | Out-File -FilePath $Env:GITHUB_OUTPUT -Encoding utf8 -Append         
+        echo "tag=$tag" | Out-File -FilePath $Env:GITHUB_OUTPUT -Encoding utf8 -Append
+        echo "3P_WEBRTC_BUILD_RELEASE_VERSION=$Env:RELEASE" | Out-File -FilePath .\\VERSIONS -Encoding utf8 -Append
     - name: Disk Cleanup
       run: |
         Get-PSDrive
@@ -68,7 +69,9 @@ jobs:
       env:
         RELEASE: ${{ github.ref_name }}
       id: release_tag
-      run: echo "tag=${RELEASE%%.*}" >> "$GITHUB_OUTPUT"     
+      run: |
+        echo "tag=${RELEASE%%.*}" >> "$GITHUB_OUTPUT"
+        echo "tag=${RELEASE}" >> "VERSION"
     - run: ./build.${{ matrix.name }}.sh "${{ steps.release_tag.outputs.tag }}_release"    
     - name: Upload Artifact
       uses: actions/upload-artifact@v1
@@ -110,7 +113,9 @@ jobs:
       env:
         RELEASE: ${{ github.ref_name }}
       id: release_tag
-      run: echo "tag=${RELEASE%%.*}" >> "$GITHUB_OUTPUT"     
+      run: |
+        echo "tag=${RELEASE%%.*}" >> "$GITHUB_OUTPUT"
+        echo "tag=${RELEASE}" >> "VERSION"
     - run: ./build.${{ matrix.name }}.sh "${{ steps.release_tag.outputs.tag }}_release"
     - name: Upload Artifact
       uses: actions/upload-artifact@v1
