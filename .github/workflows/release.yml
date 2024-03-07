@@ -48,6 +48,15 @@ jobs:
       with:
         name: webrtc.${{ matrix.name }}.tar.bz2
         path: build\_package\${{ matrix.name }}\webrtc.tar.bz2
+    - name: Upload ${{ matrix.name }} Release Asset
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: build/_package/${{ matrix.name }}/webrtc.tar.bz2
+        asset_name: webrtc.${{ github.ref_name }}.tar.bz2
+        asset_content_type: application/bz2
   build-macos:
     defaults:
       run:
@@ -78,6 +87,15 @@ jobs:
       with:
         name: webrtc.${{ matrix.name }}.tar.bz2
         path: build/_package/${{ matrix.name }}/webrtc.tar.bz2
+    - name: Upload ${{ matrix.name }} Release Asset
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: build/_package/${{ matrix.name }}/webrtc.tar.bz2
+        asset_name: webrtc.${{ github.ref_name }}.tar.bz2
+        asset_content_type: application/bz2
   build-linux:
     if: false  
     defaults:
