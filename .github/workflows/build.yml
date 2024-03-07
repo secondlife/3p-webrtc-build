@@ -21,7 +21,7 @@ jobs:
           - windows_x86_64
     runs-on: windows-2019
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Disk Cleanup
       run: |
         Get-PSDrive
@@ -39,7 +39,7 @@ jobs:
         Get-PSDrive
     - run: "& .\\build.${{ matrix.name }}.ps1 \"${{ github.event.inputs.commitHash }}\""
     - name: Upload Artifact
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: webrtc.${{ matrix.name }}.bz2
         path: build\_package\${{ matrix.name }}\webrtc.tar.bz2
@@ -56,13 +56,13 @@ jobs:
           # - ios
     runs-on: macos-11
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Select Xcode 13.0
       run: sudo xcode-select --switch /Applications/Xcode_13.0.app/Contents/Developer
     - run: brew install ninja
     - run: ./build.${{ matrix.name }}.sh "${{ github.event.inputs.commitHash }}"
     - name: Upload Artifact
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: webrtc.${{ matrix.name }}.tar.bz2
         path: build/_package/${{ matrix.name }}/webrtc.tar.bz2
@@ -87,7 +87,7 @@ jobs:
           - android_prefixed
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Disk Cleanup
       run: |
         df -h
@@ -100,7 +100,7 @@ jobs:
         df -h
     - run: ./build.${{ matrix.name }}.sh "${{ github.event.inputs.commitHash }}"
     - name: Upload Artifact
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: webrtc.${{ matrix.name }}.tar.bz2
         path: build/_package/${{ matrix.name }}/webrtc.tar.bz2
