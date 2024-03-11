@@ -149,3 +149,34 @@ jobs:
         asset_path: build/_package/${{ matrix.name }}/webrtc.tar.bz2
         asset_name: webrtc.${{ github.ref_name }}.tar.bz2
         asset_content_type: application/bz2
+  package:
+    needs:
+    - build-macos
+    - build-windows 
+    strategy:
+      matrix:
+        os: [windows-2022, macos-11]
+        addrsize: ['64']
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Determine Release Tag
+      env:
+        RELEASE: ${{ github.ref_name }}
+      id: release_tag
+      run: |
+        echo "tag=${RELEASE%%.*}" >> "$GITHUB_OUTPUT"
+    - name: Download ${{ matrix.name }} Release Asset
+      uses: actions/download-artifact@v1
+      with:
+        name: webrtc.${{ matrix.name }}.tar.bz2
+    - uses: secondlife/action-autobuild@v3
+        with:
+          addrsize: ${{ matrix.addrsize }}
+  release:
+    needs: package
+    runs-on: [ubuntu-latest]
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: secondlife/action-autobuild-release@v3
+        with:
+          public: false
