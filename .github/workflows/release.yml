@@ -170,8 +170,8 @@ jobs:
       with:
         name: webrtc.${{ matrix.name }}.tar.bz2
     - uses: secondlife/action-autobuild@v3
-        with:
-          addrsize: ${{ matrix.addrsize }}
+      with:
+        addrsize: ${{ matrix.addrsize }}
   release:
     needs: package
     runs-on: [ubuntu-latest]
