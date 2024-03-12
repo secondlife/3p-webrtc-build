@@ -128,9 +128,10 @@ jobs:
     - build-windows 
     strategy:
       matrix:
-        os: [windows-2022, macos-11]
-        addrsize: ['64']
-    runs-on: ${{ matrix.os }}
+        name:
+          - windows_x86_64
+          - macos_x86_64
+    runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
     - name: Determine Release Tag
       env:
@@ -144,7 +145,7 @@ jobs:
         name: webrtc.${{ matrix.name }}.tar.bz2
     - uses: secondlife/action-autobuild@v3
       with:
-        addrsize: ${{ matrix.addrsize }}
+        addrsize: 64
   release:
     needs: package
     runs-on: [ubuntu-latest]
