@@ -133,6 +133,7 @@ jobs:
           - macos_x86_64
     runs-on: [self-hosted, linux]
     steps:
+    - uses: actions/checkout@v4
     - name: Determine Release Tag
       env:
         RELEASE: ${{ github.ref_name }}

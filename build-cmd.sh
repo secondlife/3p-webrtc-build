@@ -19,10 +19,6 @@ set -u
 top="$(pwd)"
 stage="$top"/stage
 
-# URLs for builds that the primary WebRTC Build repo generates
-WEBRTC_BUILD_WINDOWS_X86_64_URL="https://sl-viewer-media-system.s3.amazonaws.com/webrtc/webrtc.windows_x86_64.tar.bz2"
-WEBRTC_BUILD_MACOS_X86_64_URL="https://sl-viewer-media-system.s3.amazonaws.com/webrtc/webrtc.macos_x86_64.tar.bz2"
-
 case "$AUTOBUILD_PLATFORM" in
     windows*)
         autobuild="$(cygpath -u "$AUTOBUILD")"
