@@ -2,6 +2,7 @@
 
 cd "$(dirname "$0")"
 
+platform_name="$1"
 # turn on verbose debugging output for logs.
 exec 4>&1; export BASH_XTRACEFD=4; set -x
 
@@ -26,7 +27,7 @@ source_environment_tempfile="$stage/source_environment.sh"
 "$autobuild" source_environment > "$source_environment_tempfile"
 . "$source_environment_tempfile"
 
-tar xjf --strip-components=1 "$top"/webrtc."$AUTOBUILD_PLATFORM_NAME".tar.bz2
+tar xjf --strip-components=1 "$top"/webrtc."${platform_name}".tar.bz2
 
 # Munge the WebRTC Build package contents into something compatible
 # with the layout we use for other autobuild pacakges
@@ -36,7 +37,7 @@ mv webrtc include
 mv lib release
 mkdir lib
 mv release lib
-mv Frameworks/WebRTC.xcframework/"$AUTOBUILD_PLATFORM_NAME"/macos-x86_64/WebRTC.framework lib/release
+mv Frameworks/WebRTC.xcframework/"${platform_name}"/macos-x86_64/WebRTC.framework lib/release
 mkdir LICENSES
 mv NOTICE LICENSES/webrtc-license.txt
 
