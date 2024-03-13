@@ -18,6 +18,7 @@ set -u
 
 top="$(pwd)"
 stage="$top"/stage
+mkdir "$stage"
 
 case "$AUTOBUILD_PLATFORM" in
     windows*)
@@ -36,7 +37,7 @@ pushd "$stage"
     case "$AUTOBUILD_PLATFORM" in
         windows*)
             # Grab the release from GitHub
-            tar xjf --strip-components=1 webrtc.windows_x86_64.tar.bz2
+            tar xjf --strip-components=1 "$top"/webrtc.windows_x86_64.tar.bz2
 
             # Munge the WebRTC Build package contents into something compatible
             # with the layout we use for other autobuild pacakges
@@ -59,7 +60,7 @@ pushd "$stage"
 
         darwin*)
             # Grab the release from GitHub
-            tar xjf --strip-components=1 webrtc.macos_x86_64.tar.bz2
+            tar xjf --strip-components=1 "$top"/webrtc.macos_x86_64.tar.bz2
 
             # Munge the WebRTC Build package contents into something compatible
             # with the layout we use for other autobuild pacakges
