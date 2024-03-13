@@ -137,6 +137,7 @@ jobs:
     - name: Determine Release Tag
       env:
         RELEASE: ${{ github.ref_name }}
+        AUTOBUILD_PLATFORM_NAME: ${{ matrix.name }}
       id: release_tag
       run: |
         echo "tag=${RELEASE%%.*}" >> "$GITHUB_OUTPUT"
