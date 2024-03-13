@@ -147,7 +147,6 @@ jobs:
         name: webrtc.${{ matrix.name }}.tar.bz2
     - uses: secondlife/action-autobuild@v3
       with:
-        build-args: "-- ${{ matrix.name }}"
         addrsize: 64
   release:
     needs: package
