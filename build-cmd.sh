@@ -2,6 +2,18 @@
 
 cd "$(dirname "$0")"
 
+case "$AUTOBUILD_PLATFORM" in
+    windows*)
+        platform_name="windows_x86_64"
+    ;;
+    darwin*)
+        platform_name="macos_x86_64"
+    ;;
+    linux*)
+        echo "This project is not currently supported for $AUTOBUILD_PLATFORM" 1>&2 ; exit 1
+    ;;
+esac
+
 platform_name="$1"
 # turn on verbose debugging output for logs.
 exec 4>&1; export BASH_XTRACEFD=4; set -x
