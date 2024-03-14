@@ -122,13 +122,12 @@ jobs:
       with:
         name: webrtc.${{ matrix.name }}.tar.bz2
         path: build/_package/${{ matrix.name }}/webrtc.tar.bz2
-  package:
+  package-macos:
     needs:
     - build-macos
-    - build-windows 
     strategy:
       matrix:
-        os: [windows-2019, macos-11]
+        os: [macos-11]
         addrsize: ['64']
     runs-on: ${{ matrix.os }}
     steps:
@@ -139,10 +138,33 @@ jobs:
       id: release_tag
       run: |
         echo "tag=${RELEASE%%.*}" >> "$GITHUB_OUTPUT"
-    - name: Download ${{ matrix.name }} Artifact
+    - name: Download macos_x86_64 Artifact
       uses: actions/download-artifact@v4
       with:
-        name: webrtc.${{ matrix.name }}.tar.bz2
+        name: webrtc.macos_x86_64.tar.bz2
+    - uses: secondlife/action-autobuild@v3
+      with:
+        addrsize: ${{ matrix.addrsize }}
+  package-windows:
+    needs:
+    - build-windows 
+    strategy:
+      matrix:
+        os: [windows-2019]
+        addrsize: ['64']
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v4
+    - name: Determine Release Tag
+      env:
+        RELEASE: ${{ github.ref_name }}
+      id: release_tag
+      run: |
+        echo "tag=${RELEASE%%.*}" >> "$GITHUB_OUTPUT"
+    - name: Download windows_x86_64 Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: webrtc.windows_x86_64.tar.bz2
     - uses: secondlife/action-autobuild@v3
       with:
         addrsize: ${{ matrix.addrsize }}
