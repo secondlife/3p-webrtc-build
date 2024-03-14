@@ -39,6 +39,7 @@ source_environment_tempfile="$stage/source_environment.sh"
 . "$source_environment_tempfile"
 
 pushd "$stage"
+ls -la "$top"/*
 unzip "$top"/webrtc."${platform_name}".tar.bz2.zip
 tar --strip-components=1 -xjf "$top"/webrtc."${platform_name}".tar.bz2
 
