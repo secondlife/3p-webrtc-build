@@ -128,16 +128,14 @@ jobs:
     - build-windows 
     strategy:
       matrix:
-        name:
-          - windows_x86_64
-          - macos_x86_64
-    runs-on: [self-hosted, linux]
+        os: [windows-2019, macos-11]
+        addrsize: ['64']
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
     - name: Determine Release Tag
       env:
         RELEASE: ${{ github.ref_name }}
-        AUTOBUILD_PLATFORM_NAME: ${{ matrix.name }}
       id: release_tag
       run: |
         echo "tag=${RELEASE%%.*}" >> "$GITHUB_OUTPUT"
@@ -147,11 +145,11 @@ jobs:
         name: webrtc.${{ matrix.name }}.tar.bz2
     - uses: secondlife/action-autobuild@v3
       with:
-        addrsize: 64
+        addrsize: ${{ matrix.addrsize }}
   release:
     needs: package
-    runs-on: [self-hosted, linux]
-    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: [ubuntu-latest]
+    if: startsWith(github.ref, 'refs/tags/m')
     steps:
       - uses: secondlife/action-autobuild-release@v3
         with:

@@ -24,7 +24,11 @@
               <key>build</key>
               <map>
                 <key>command</key>
-                <string>./build-cmd.sh</string>
+                <string>bash</string>
+                <key>arguments</key>
+                <array>
+                  <string>../build-cmd.sh</string>
+                </array>
               </map>
               <key>default</key>
               <boolean>true</boolean>
@@ -43,10 +47,6 @@
           <map>
             <key>default</key>
             <map>
-              <key>arguments</key>
-              <array>
-                <string>macos_x86_64</string>
-              </array>
               <key>default</key>
               <boolean>true</boolean>
               <key>name</key>
@@ -61,7 +61,7 @@
           <key>name</key>
           <string>darwin64</string>
         </map>
-        <key>windows</key>
+        <key>windows64</key>
         <map>
           <key>build_directory</key>
           <string>stage</string>
@@ -69,10 +69,6 @@
           <map>
             <key>default</key>
             <map>
-              <key>arguments</key>
-              <array>
-                <string>windows_x86_64</string>
-              </array>
               <key>default</key>
               <boolean>true</boolean>
               <key>name</key>
