@@ -16,7 +16,7 @@ jobs:
           - windows_x86_64
           # - windows_arm64
           # - windows_x86
-    runs-on: windows-2019
+    runs-on: windows-2022
     steps:
     - uses: actions/checkout@v4
     - name: Determine Release Tag
@@ -150,7 +150,7 @@ jobs:
     - build-windows 
     strategy:
       matrix:
-        os: [windows-2019]
+        os: [windows-2022]
         addrsize: ['64']
     runs-on: ${{ matrix.os }}
     steps:
