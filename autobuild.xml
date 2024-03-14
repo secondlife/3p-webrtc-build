@@ -23,12 +23,8 @@
             <map>
               <key>build</key>
               <map>
-                <key>arguments</key>
-                <array>
-                  <string>./build-cmd.sh</string>
-                </array>
                 <key>command</key>
-                <string>bash</string>
+                <string>./build-cmd.sh</string>
               </map>
               <key>default</key>
               <boolean>true</boolean>
@@ -47,6 +43,10 @@
           <map>
             <key>default</key>
             <map>
+              <key>arguments</key>
+              <array>
+                <string>macos_x86_64</string>
+              </array>
               <key>default</key>
               <boolean>true</boolean>
               <key>name</key>
@@ -69,6 +69,10 @@
           <map>
             <key>default</key>
             <map>
+              <key>arguments</key>
+              <array>
+                <string>windows_x86_64</string>
+              </array>
               <key>default</key>
               <boolean>true</boolean>
               <key>name</key>
