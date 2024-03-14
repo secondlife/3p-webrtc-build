@@ -22,11 +22,9 @@ stage="$top"/stage
 case "$AUTOBUILD_PLATFORM" in
     windows64)
         autobuild="$(cygpath -u "$AUTOBUILD")"
-        platform_name="windows_x86_64"
     ;;
     darwin64)
         autobuild="$AUTOBUILD"
-        platform_name="macos_x86_64"
     ;;
     *)
         echo "This project is not currently supported for $AUTOBUILD_PLATFORM" 1>&2 ; exit 1
@@ -40,8 +38,7 @@ source_environment_tempfile="$stage/source_environment.sh"
 
 pushd "$stage"
 ls -la "$top"/*
-unzip "$top"/webrtc."${platform_name}".tar.bz2.zip
-tar --strip-components=1 -xjf "$top"/webrtc."${platform_name}".tar.bz2
+tar --strip-components=1 -xjf "$top"/webrtc.tar.bz2
 
 # Munge the WebRTC Build package contents into something compatible
 # with the layout we use for other autobuild pacakges

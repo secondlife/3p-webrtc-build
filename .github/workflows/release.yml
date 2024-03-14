@@ -145,6 +145,7 @@ jobs:
     - uses: secondlife/action-autobuild@v3
       with:
         addrsize: ${{ matrix.addrsize }}
+        checkout: false
   package-windows:
     needs:
     - build-windows 
