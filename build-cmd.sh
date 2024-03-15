@@ -39,7 +39,7 @@ source_environment_tempfile="$stage/source_environment.sh"
 . "$source_environment_tempfile"
 
 pushd "$stage"
-GH_TOKEN="$AUTOBUILD_GITHUB_TOKEN" gh run download "$GITHUB_RUN_ID" --repo secondlife/3p-webrtc-build --dir "$top" --name webrtc."$build_type".tar.bz2
+GH_TOKEN="$AUTOBUILD_GITHUB_TOKEN" gh run download "$GITHUB_RUN_ID" --repo secondlife/3p-webrtc-build --dir "$top"/ --name webrtc."$build_type".tar.bz2
 ls -la "$top"/*
 tar --strip-components=1 -xjf "$top"/webrtc.tar.bz2
 
@@ -62,4 +62,4 @@ esac
 
 popd
 build=${AUTOBUILD_BUILD_ID:=0}
-echo "${RELEASE}.${build}" > "${stage}/VERSION.txt"
+echo "${GITHUB_REF}.${build}" > "${stage}/VERSION.txt"
