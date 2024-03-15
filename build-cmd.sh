@@ -60,6 +60,5 @@ case "$AUTOBUILD_PLATFORM" in
 esac
 
 popd
-version=${RELEASE#*=}
 build=${AUTOBUILD_BUILD_ID:=0}
-echo "${version}.${build}" > "${stage}/VERSION.txt"
+echo "${RELEASE}.${build}" > "${stage}/VERSION.txt"

@@ -153,10 +153,10 @@ jobs:
     - name: Determine Release Tag
       env:
         RELEASE: ${{ github.ref_name }}
-        GH_TOKEN: ${{ github.token }}
       id: release_tag
       run: |
         echo "tag=${RELEASE%%.*}" >> "$GITHUB_OUTPUT"
+        echo "RELEASE=${RELEASE}" >> "$GITHUB_OUTPUT"
     - uses: secondlife/action-autobuild@v3.8.0
       with:
         addrsize: ${{ matrix.addrsize }}
