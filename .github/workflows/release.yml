@@ -137,11 +137,6 @@ jobs:
       id: release_tag
       run: |
         echo "tag=${RELEASE%%.*}" >> "$GITHUB_OUTPUT"
-    - name: Download macos_x86_64 Artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: webrtc.macos_x86_64.tar.bz2
-        path: "${RUNNER_TEMP}"
     - uses: secondlife/action-autobuild@v3.8.0
       with:
         addrsize: ${{ matrix.addrsize }}
