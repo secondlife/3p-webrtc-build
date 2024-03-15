@@ -39,9 +39,8 @@ source_environment_tempfile="$stage/source_environment.sh"
 . "$source_environment_tempfile"
 
 pushd "$stage"
-gh run download "$GITHUB_RUN_ID" --dir "$top" --pattern webrtc."$build_type".tar.bz2
-ls -la "$top"/*
-tar --strip-components=1 -xjf "$top"/webrtc."$build_type".tar.bz2
+GH_TOKEN="$AUTOBUILD_GITHUB_TOKEN" gh run download "$GITHUB_RUN_ID" --repo secondlife/3p-webrtc-build --dir "$top" --name webrtc."$build_type".tar.bz2
+tar --strip-components=1 -xjf "$top"/webrtc.tar.bz2
 
 # Munge the WebRTC Build package contents into something compatible
 # with the layout we use for other autobuild pacakges
