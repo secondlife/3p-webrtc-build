@@ -38,7 +38,7 @@ source_environment_tempfile="$stage/source_environment.sh"
 
 pushd "$stage"
 ls -la "$top"/*
-tar --strip-components=1 -xjf "$top"/webrtc.tar.bz2
+tar --strip-components=1 -xjf "$RUNNER_TEMP"/webrtc.tar.bz2
 
 # Munge the WebRTC Build package contents into something compatible
 # with the layout we use for other autobuild pacakges
