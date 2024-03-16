@@ -18,7 +18,8 @@ jobs:
           # - windows_x86
     runs-on: windows-2022
     outputs:
-      output-artifact-id: ${{ steps.artifact-upload-step.output.artifact-id }}
+      output-artifact-id
+        value: ${{ steps.artifact-upload-step.outputs.artifact-id }}
     steps:
     - uses: actions/checkout@v4
     - name: Determine Release Tag
@@ -64,7 +65,8 @@ jobs:
           # - ios
     runs-on: macos-11
     outputs:
-      output-artifact-id: ${{ steps.artifact-upload-step.output.artifact-id }}
+      output-artifact-id
+        value: ${{ steps.artifact-upload-step.outputs.artifact-id }}
     steps:
     - uses: actions/checkout@v4
     - name: Select Xcode 13.0
@@ -137,6 +139,8 @@ jobs:
         addrsize: ['64']
     runs-on: ${{ matrix.os }}
     steps:
+    - name: Print output
+      run: echo ${{ needs.build-macos.outputs.output-artifact-id }}
     - name: Determine Release Tag
       env:
         RELEASE: ${{ github.ref_name }}
@@ -158,6 +162,8 @@ jobs:
         addrsize: ['64']
     runs-on: ${{ matrix.os }}
     steps:
+    - name: Print output
+      run: echo ${{ needs.build-macos.outputs.output-artifact-id }}
     - name: Determine Release Tag
       env:
         RELEASE: ${{ github.ref_name }}
