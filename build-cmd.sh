@@ -2,6 +2,7 @@
 
 cd "$(dirname "$0")"
 asset_id="$1"
+tmp_dir="$2"
 
 # turn on verbose debugging output for logs.
 exec 4>&1; export BASH_XTRACEFD=4; set -x
@@ -18,7 +19,7 @@ set -u
 [[ "$OSTYPE" == "cygwin" ]] && set -o igncr
 
 top="$(pwd)"
-stage="$top"/stage
+stage="${top}"/stage
 
 case "$AUTOBUILD_PLATFORM" in
     windows64)
@@ -41,10 +42,9 @@ source_environment_tempfile="$stage/source_environment.sh"
 
 pushd "$stage"
 
-curl -L -H "Authorization: Bearer $AUTOBUILD_GITHUB_TOKEN" https://api.github.com/repos/secondlife/3p-webrtc-build/actions/artifacts/"$asset_id"/zip
-curl -L -H "Authorization: Bearer $AUTOBUILD_GITHUB_TOKEN" https://api.github.com/repos/secondlife/3p-webrtc-build/actions/artifacts/"$asset_id"/zip | bsdtar -xOf - | tar xj --strip-components=1
+curl -L -H "Authorization: Bearer $AUTOBUILD_GITHUB_TOKEN" https://api.github.com/repos/secondlife/3p-webrtc-build/actions/artifacts/"$asset_id"/zip | bsdtar -xOf - > "${tmp_dir}"/webrtc.tar.bz2
+tar xjf "${tmp_dir}"/webrtc.tar.bz2 --strip-components=1
 
-ls -la "$top"/stage
 
 # Munge the WebRTC Build package contents into something compatible
 # with the layout we use for other autobuild pacakges
@@ -63,6 +63,7 @@ case "$AUTOBUILD_PLATFORM" in
     ;;
 esac
 
-popd
 build=${AUTOBUILD_BUILD_ID:=0}
-echo "${GITHUB_REF:10}.${build}" > "${stage}/VERSION.txt"
+echo "${GITHUB_REF:10}.${build}" > "VERSION.txt"
+popd
+
