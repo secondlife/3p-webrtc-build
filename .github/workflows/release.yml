@@ -17,6 +17,7 @@ jobs:
           # - windows_arm64
           # - windows_x86
     runs-on: windows-2022
+    output-artifact-id: ${{ steps.artifact-upload-step.output.artifact-id }}
     steps:
     - uses: actions/checkout@v4
     - name: Determine Release Tag
@@ -45,6 +46,7 @@ jobs:
     - run: "& .\\build.${{ matrix.name }}.ps1 \"${{ steps.release_tag.outputs.tag }}_release\""
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
+      id: artifact-upload-step
       with:
         name: webrtc.${{ matrix.name }}.tar.bz2
         path: build\_package\${{ matrix.name }}\webrtc.tar.bz2
@@ -60,6 +62,7 @@ jobs:
           - macos_x86_64
           # - ios
     runs-on: macos-11
+    output-artifact-id: ${{ steps.artifact-upload-step.output.artifact-id }}
     steps:
     - uses: actions/checkout@v4
     - name: Select Xcode 13.0
@@ -75,6 +78,7 @@ jobs:
     - run: ./build.${{ matrix.name }}.sh "${{ steps.release_tag.outputs.tag }}_release"    
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
+      id: artifact-upload-step
       with:
         name: webrtc.${{ matrix.name }}.tar.bz2
         path: build/_package/${{ matrix.name }}/webrtc.tar.bz2
@@ -142,6 +146,7 @@ jobs:
       with:
         addrsize: ${{ matrix.addrsize }}
         token: ${{ github.token }}
+        build-args: ${{ needs.build-macos.outputs.output-artifact-id }}
   package-windows:
     needs:
     - build-windows 
@@ -162,6 +167,7 @@ jobs:
       with:
         addrsize: ${{ matrix.addrsize }}
         token: ${{ github.token }}
+        build-args: ${{ needs.build-macos.outputs.output-artifact-id }}
   release:
     needs:
     - package-windows

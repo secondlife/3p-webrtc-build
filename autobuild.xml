@@ -24,11 +24,7 @@
               <key>build</key>
               <map>
                 <key>command</key>
-                <string>bash</string>
-                <key>arguments</key>
-                <array>
-                  <string>../build-cmd.sh</string>
-                </array>
+                <string>../build-cmd.sh</string>
               </map>
               <key>default</key>
               <boolean>true</boolean>

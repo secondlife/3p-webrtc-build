@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 cd "$(dirname "$0")"
+asset_id="$1"
 
 # turn on verbose debugging output for logs.
 exec 4>&1; export BASH_XTRACEFD=4; set -x
@@ -39,10 +40,12 @@ source_environment_tempfile="$stage/source_environment.sh"
 . "$source_environment_tempfile"
 
 pushd "$stage"
-set
-GH_TOKEN="$AUTOBUILD_GITHUB_TOKEN" gh run download 8291420806 --repo secondlife/3p-webrtc-build --dir "$top"
+
+curl -o "${top}"/webrtc.tar.bz2.zip -L -H "Authorization: Bearer $AUTOBUILD_GITHUB_TOKEN" https://api.github.com/repos/secondlife/3p-webrtc-build/actions/artifacts/"$asset_id"/zip
+unzip "${top}"/webrtc.tar.bz2.zip
+
+tar xjf "${top}"/webrtc.tar.bz2  --strip-components=1
 ls -la "$top"
-tar --strip-components=1 -xjf "$top"/webrtc."$build_type".tar.bz2/webrtc.tar.bz2
 
 # Munge the WebRTC Build package contents into something compatible
 # with the layout we use for other autobuild pacakges
