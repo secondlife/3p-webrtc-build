@@ -1,9 +1,11 @@
-name: release
+name: test
 
 on:
-  release:
-    types: [published]
-
+  workflow_dispatch:
+      github_run_id:
+        description: 'Run id from which to create package'
+        default: '8303274173'
+        required: true
 jobs:
   package-windows:
     needs:
