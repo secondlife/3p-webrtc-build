@@ -18,7 +18,7 @@ jobs:
           # - windows_x86
     runs-on: windows-2022
     outputs:
-      output-artifact-id
+      output-artifact-id:
         value: ${{ steps.artifact-upload-step.outputs.artifact-id }}
     steps:
     - uses: actions/checkout@v4
@@ -65,7 +65,7 @@ jobs:
           # - ios
     runs-on: macos-11
     outputs:
-      output-artifact-id
+      output-artifact-id:
         value: ${{ steps.artifact-upload-step.outputs.artifact-id }}
     steps:
     - uses: actions/checkout@v4
