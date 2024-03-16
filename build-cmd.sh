@@ -2,7 +2,6 @@
 
 cd "$(dirname "$0")"
 asset_id="$1"
-tmp_dir="$2"
 
 # turn on verbose debugging output for logs.
 exec 4>&1; export BASH_XTRACEFD=4; set -x
@@ -25,10 +24,12 @@ case "$AUTOBUILD_PLATFORM" in
     windows64)
         autobuild="$(cygpath -u "$AUTOBUILD")"
         build_type="windows_x86_64"
+        tmp_dir="$(cygpath -C ANSI -w "${1}")";
     ;;
     darwin64)
         autobuild="$AUTOBUILD"
         build_type="macos_x86_64"
+        tmp_dir="${1}"
     ;;
     *)
         echo "This project is not currently supported for $AUTOBUILD_PLATFORM" 1>&2 ; exit 1
