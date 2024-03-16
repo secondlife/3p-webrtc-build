@@ -22,6 +22,7 @@ jobs:
       run: |
         echo "tag=${RELEASE%%.*}" >> "$GITHUB_OUTPUT"
         echo "RELEASE=${RELEASE}" >> "$GITHUB_OUTPUT"
+        echo "RELEASE_RUN_ID=${{ inputs.github_run_id }}" >> "$GITHUB_OUTPUT"
     - uses: secondlife/action-autobuild@v3.8.0
       with:
         addrsize: ${{ matrix.addrsize }}
