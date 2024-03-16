@@ -24,7 +24,7 @@ case "$AUTOBUILD_PLATFORM" in
     windows64)
         autobuild="$(cygpath -u "$AUTOBUILD")"
         build_type="windows_x86_64"
-        tmp_dir=$(cygpath -C ANSI -w "${2}");
+        tmp_dir="$(cygpath -C ANSI -u ${2})";
     ;;
     darwin64)
         autobuild="$AUTOBUILD"
