@@ -8,6 +8,25 @@ on:
         default: '8303274173'
         required: true
 jobs:
+  package-macos:
+    strategy:
+      matrix:
+        os: [macos-11]
+        addrsize: ['64']
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Determine Release Tag
+      env:
+        RELEASE: ${{ github.ref_name }}
+      id: release_tag
+      run: |
+        echo "tag=${RELEASE%%.*}" >> "$GITHUB_OUTPUT"
+        echo "RELEASE=${RELEASE}" >> "$GITHUB_OUTPUT"
+    - uses: secondlife/action-autobuild@v3.8.0
+      with:
+        addrsize: ${{ matrix.addrsize }}
+        token: ${{ github.token }}
+        build-args: ../build-cmd.sh ${{ inputs.github_run_id }}
   package-windows:
     strategy:
       matrix:
@@ -22,14 +41,15 @@ jobs:
       run: |
         echo "tag=${RELEASE%%.*}" >> "$GITHUB_OUTPUT"
         echo "RELEASE=${RELEASE}" >> "$GITHUB_OUTPUT"
-        echo "RELEASE_RUN_ID=${{ inputs.github_run_id }}" >> "$GITHUB_OUTPUT"
     - uses: secondlife/action-autobuild@v3.8.0
       with:
         addrsize: ${{ matrix.addrsize }}
         token: ${{ github.token }}
+        build-args: ../build-cmd.sh ${{ inputs.github_run_id }}
   release:
     needs:
     - package-windows
+    - package-macos
     runs-on: [ubuntu-latest]
     if: startsWith(github.ref, 'refs/tags/m')
     steps:
