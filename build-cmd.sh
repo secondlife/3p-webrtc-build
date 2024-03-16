@@ -41,11 +41,9 @@ source_environment_tempfile="$stage/source_environment.sh"
 
 pushd "$stage"
 
-curl -o "${top}"/webrtc.tar.bz2.zip -L -H "Authorization: Bearer $AUTOBUILD_GITHUB_TOKEN" https://api.github.com/repos/secondlife/3p-webrtc-build/actions/artifacts/"$asset_id"/zip
-unzip -d "${top}" "${top}"/webrtc.tar.bz2.zip
+curl -L -H "Authorization: Bearer $AUTOBUILD_GITHUB_TOKEN" https://api.github.com/repos/secondlife/3p-webrtc-build/actions/artifacts/"$asset_id"/zip | bsdtar -xOf - | tar xj --strip-components=1
 
-tar xjf "${top}"/webrtc.tar.bz2  --strip-components=1
-ls -la "$top"
+ls -la "$top"/stage
 
 # Munge the WebRTC Build package contents into something compatible
 # with the layout we use for other autobuild pacakges
@@ -66,4 +64,4 @@ esac
 
 popd
 build=${AUTOBUILD_BUILD_ID:=0}
-echo "${GITHUB_REF}.${build}" > "${stage}/VERSION.txt"
+echo "${GITHUB_REF:10}.${build}" > "${stage}/VERSION.txt"
