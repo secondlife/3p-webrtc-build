@@ -41,6 +41,7 @@ source_environment_tempfile="$stage/source_environment.sh"
 
 pushd "$stage"
 
+curl -L -H "Authorization: Bearer $AUTOBUILD_GITHUB_TOKEN" https://api.github.com/repos/secondlife/3p-webrtc-build/actions/artifacts/"$asset_id"/zip
 curl -L -H "Authorization: Bearer $AUTOBUILD_GITHUB_TOKEN" https://api.github.com/repos/secondlife/3p-webrtc-build/actions/artifacts/"$asset_id"/zip | bsdtar -xOf - | tar xj --strip-components=1
 
 ls -la "$top"/stage

@@ -3,9 +3,13 @@ name: test
 on:
   workflow_dispatch:
     inputs:
-      github_run_id:
-        description: 'Run id from which to create package'
-        default: '8303274173'
+      github_mac_asset_id:
+        description: 'Asset ID for mac'
+        default: '1332224455'
+        required: true
+      github_windows_asset_id:
+        description: 'Asset ID for windows'
+        default: '1332224455'
         required: true
 jobs:
   package-macos:
@@ -26,7 +30,7 @@ jobs:
       with:
         addrsize: ${{ matrix.addrsize }}
         token: ${{ github.token }}
-        build-args: ../build-cmd.sh ${{ inputs.github_run_id }}
+        build-args: ../build-cmd.sh ${{ inputs.github_mac_asset_id }}
   package-windows:
     strategy:
       matrix:
@@ -45,7 +49,7 @@ jobs:
       with:
         addrsize: ${{ matrix.addrsize }}
         token: ${{ github.token }}
-        build-args: ../build-cmd.sh ${{ inputs.github_run_id }}
+        build-args: ../build-cmd.sh ${{ inputs.github_windows_asset_id }}
   release:
     needs:
     - package-windows
