@@ -39,6 +39,7 @@ source_environment_tempfile="$stage/source_environment.sh"
 . "$source_environment_tempfile"
 
 pushd "$stage"
+set
 GH_TOKEN="$AUTOBUILD_GITHUB_TOKEN" gh run download 8291420806 --repo secondlife/3p-webrtc-build --dir "$top"
 ls -la "$top"
 tar --strip-components=1 -xjf "$top"/webrtc."$build_type".tar.bz2/webrtc.tar.bz2
