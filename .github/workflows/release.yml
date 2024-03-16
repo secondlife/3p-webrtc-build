@@ -17,7 +17,8 @@ jobs:
           # - windows_arm64
           # - windows_x86
     runs-on: windows-2022
-    output-artifact-id: ${{ steps.artifact-upload-step.output.artifact-id }}
+    outputs:
+      output-artifact-id: ${{ steps.artifact-upload-step.output.artifact-id }}
     steps:
     - uses: actions/checkout@v4
     - name: Determine Release Tag
@@ -62,7 +63,8 @@ jobs:
           - macos_x86_64
           # - ios
     runs-on: macos-11
-    output-artifact-id: ${{ steps.artifact-upload-step.output.artifact-id }}
+    outputs:
+      output-artifact-id: ${{ steps.artifact-upload-step.output.artifact-id }}
     steps:
     - uses: actions/checkout@v4
     - name: Select Xcode 13.0
