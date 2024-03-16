@@ -148,7 +148,7 @@ jobs:
       with:
         addrsize: ${{ matrix.addrsize }}
         token: ${{ github.token }}
-        build-args: ${{ needs.build-macos.outputs.output-artifact-id }}
+        build-args: ../build-cmd.sh ${{ needs.build-macos.outputs.output-artifact-id }}
   package-windows:
     needs:
     - build-windows 
@@ -169,7 +169,7 @@ jobs:
       with:
         addrsize: ${{ matrix.addrsize }}
         token: ${{ github.token }}
-        build-args: ${{ needs.build-macos.outputs.output-artifact-id }}
+        build-args: ../build-cmd.sh ${{ needs.build-macos.outputs.output-artifact-id }}
   release:
     needs:
     - package-windows
