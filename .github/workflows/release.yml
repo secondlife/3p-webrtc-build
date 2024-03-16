@@ -137,8 +137,6 @@ jobs:
         addrsize: ['64']
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Print output
-      run: echo ${{ needs.build-macos.outputs.output-artifact-id }}
     - name: Determine Release Tag
       env:
         RELEASE: ${{ github.ref_name }}
@@ -160,8 +158,6 @@ jobs:
         addrsize: ['64']
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Print output
-      run: echo ${{ needs.build-macos.outputs.output-artifact-id }}
     - name: Determine Release Tag
       env:
         RELEASE: ${{ github.ref_name }}
