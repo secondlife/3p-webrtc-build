@@ -43,9 +43,10 @@ jobs:
         addrsize: ${{ matrix.addrsize }}
         token: ${{ github.token }}
         build-args: ../build-cmd.sh 1332416345
-    - run: |
-      echo "Sleeping for 60 seconds to allow for upload"
-      sleep(60)
+    - name: Wait for upload
+      run: |
+        echo "Sleeping for 60 seconds to allow for upload"
+        sleep 60
   release:
     needs:
     - package-windows
