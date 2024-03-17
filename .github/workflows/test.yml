@@ -1,16 +1,9 @@
 name: test
 
 on:
-  workflow_dispatch:
-    inputs:
-      github_mac_asset_id:
-        description: 'Asset ID for mac'
-        default: '1332412191'
-        required: true
-      github_windows_asset_id:
-        description: 'Asset ID for windows'
-        default: '1332416345'
-        required: true
+  release:
+    types: [published]
+
 jobs:
   package-macos:
     strategy:
@@ -30,7 +23,7 @@ jobs:
       with:
         addrsize: ${{ matrix.addrsize }}
         token: ${{ github.token }}
-        build-args: ../build-cmd.sh ${{ inputs.github_mac_asset_id }} '${{ runner.temp }}'
+        build-args: ../build-cmd.sh 1332412191
   package-windows:
     strategy:
       matrix:
@@ -49,7 +42,7 @@ jobs:
       with:
         addrsize: ${{ matrix.addrsize }}
         token: ${{ github.token }}
-        build-args: ../build-cmd.sh ${{ inputs.github_windows_asset_id }} '${{ runner.temp }}'
+        build-args: ../build-cmd.sh 1332416345
   release:
     needs:
     - package-windows
