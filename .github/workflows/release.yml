@@ -137,7 +137,7 @@ jobs:
         addrsize: ['64']
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: secondlife/action-autobuild@3905538e3954f20de482ab980ac982a8a2f01580
+    - uses: secondlife/action-autobuild@3
       with:
         addrsize: ${{ matrix.addrsize }}
         token: ${{ github.token }}
@@ -151,7 +151,7 @@ jobs:
         addrsize: ['64']
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: secondlife/action-autobuild@3905538e3954f20de482ab980ac982a8a2f01580
+    - uses: secondlife/action-autobuild@3
       with:
         addrsize: ${{ matrix.addrsize }}
         token: ${{ github.token }}
