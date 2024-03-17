@@ -16,7 +16,9 @@ jobs:
           - windows_x86_64
           # - windows_arm64
           # - windows_x86
-    runs-on: windows-2019
+    runs-on: windows-2022
+    outputs:
+      output-artifact-id: ${{ steps.artifact-upload-step.outputs.artifact-id }}
     steps:
     - uses: actions/checkout@v4
     - name: Determine Release Tag
@@ -45,18 +47,10 @@ jobs:
     - run: "& .\\build.${{ matrix.name }}.ps1 \"${{ steps.release_tag.outputs.tag }}_release\""
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
+      id: artifact-upload-step
       with:
         name: webrtc.${{ matrix.name }}.tar.bz2
         path: build\_package\${{ matrix.name }}\webrtc.tar.bz2
-    - name: Upload ${{ matrix.name }} Release Asset
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: build/_package/${{ matrix.name }}/webrtc.tar.bz2
-        asset_name: webrtc.${{ github.ref_name }}.tar.bz2
-        asset_content_type: application/bz2
   build-macos:
     defaults:
       run:
@@ -69,6 +63,8 @@ jobs:
           - macos_x86_64
           # - ios
     runs-on: macos-11
+    outputs:
+      output-artifact-id: ${{ steps.artifact-upload-step.outputs.artifact-id }}
     steps:
     - uses: actions/checkout@v4
     - name: Select Xcode 13.0
@@ -84,18 +80,10 @@ jobs:
     - run: ./build.${{ matrix.name }}.sh "${{ steps.release_tag.outputs.tag }}_release"    
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
+      id: artifact-upload-step
       with:
         name: webrtc.${{ matrix.name }}.tar.bz2
         path: build/_package/${{ matrix.name }}/webrtc.tar.bz2
-    - name: Upload ${{ matrix.name }} Release Asset
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: build/_package/${{ matrix.name }}/webrtc.tar.bz2
-        asset_name: webrtc.${{ github.ref_name }}.tar.bz2
-        asset_content_type: application/bz2
   build-linux:
     if: false  
     defaults:
@@ -140,12 +128,41 @@ jobs:
       with:
         name: webrtc.${{ matrix.name }}.tar.bz2
         path: build/_package/${{ matrix.name }}/webrtc.tar.bz2
-    - name: Upload ${{ matrix.name }} Release Asset
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  package-macos:
+    needs:
+    - build-macos
+    strategy:
+      matrix:
+        os: [macos-11]
+        addrsize: ['64']
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: secondlife/action-autobuild@3905538e3954f20de482ab980ac982a8a2f01580
       with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: build/_package/${{ matrix.name }}/webrtc.tar.bz2
-        asset_name: webrtc.${{ github.ref_name }}.tar.bz2
-        asset_content_type: application/bz2
+        addrsize: ${{ matrix.addrsize }}
+        token: ${{ github.token }}
+        build-args: ../build-cmd.sh ${{ needs.build-macos.outputs.output-artifact-id }}
+  package-windows:
+    needs:
+    - build-windows 
+    strategy:
+      matrix:
+        os: [windows-2022]
+        addrsize: ['64']
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: secondlife/action-autobuild@3905538e3954f20de482ab980ac982a8a2f01580
+      with:
+        addrsize: ${{ matrix.addrsize }}
+        token: ${{ github.token }}
+        build-args: ../build-cmd.sh ${{ needs.build-windows.outputs.output-artifact-id }}
+  release:
+    needs:
+    - package-windows
+    - package-macos
+    runs-on: [ubuntu-latest]
+    if: startsWith(github.ref, 'refs/tags/m')
+    steps:
+      - uses: secondlife/action-autobuild-release@v3
+        with:
+          public: false
