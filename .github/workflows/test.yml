@@ -49,6 +49,6 @@ jobs:
     - package-macos
     runs-on: [ubuntu-latest]
     steps:
-      - uses: roxanneskelly/action-autobuild-release@132e094db5239494b514f507c00d9a867c7c158e
+      - uses: secondlife/action-autobuild-release@roxie/webrtc-release-debugging
         with:
           public: false
