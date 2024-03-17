@@ -19,7 +19,7 @@ jobs:
       run: |
         echo "tag=${RELEASE%%.*}" >> "$GITHUB_OUTPUT"
         echo "RELEASE=${RELEASE}" >> "$GITHUB_OUTPUT"
-    - uses: secondlife/action-autobuild@v3.8.0
+    - uses: secondlife/action-autobuild@v3.7.0
       with:
         addrsize: ${{ matrix.addrsize }}
         token: ${{ github.token }}
@@ -38,15 +38,11 @@ jobs:
       run: |
         echo "tag=${RELEASE%%.*}" >> "$GITHUB_OUTPUT"
         echo "RELEASE=${RELEASE}" >> "$GITHUB_OUTPUT"
-    - uses: secondlife/action-autobuild@v3.8.0
+    - uses: secondlife/action-autobuild@3.7.0
       with:
         addrsize: ${{ matrix.addrsize }}
         token: ${{ github.token }}
         build-args: ../build-cmd.sh 1332416345
-    - name: Wait for upload
-      run: |
-        echo "Sleeping for 60 seconds to allow for upload"
-        sleep 60
   release:
     needs:
     - package-windows
