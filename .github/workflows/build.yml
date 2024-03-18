@@ -67,7 +67,6 @@ jobs:
         name: webrtc.${{ matrix.name }}.tar.bz2
         path: build/_package/${{ matrix.name }}/webrtc.tar.bz2
   build-linux:
-    if: false  
     defaults:
       run:
         working-directory: ./build
@@ -82,10 +81,10 @@ jobs:
           # - ubuntu-20.04_armv8
           # - ubuntu-18.04_x86_64
           # - ubuntu-20.04_x86_64
-          # - ubuntu-22.04_x86_64
-          - android
-          - android_prefixed
-    runs-on: buildjet-4vcpu-ubuntu-2204
+          - ubuntu-22.04_x86_64
+          # - android
+          # - android_prefixed
+    runs-on: linux-large 
     steps:
     - uses: actions/checkout@v4
     - name: Disk Cleanup

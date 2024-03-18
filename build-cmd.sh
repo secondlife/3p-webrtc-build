@@ -26,8 +26,12 @@ case "$AUTOBUILD_PLATFORM" in
         build_type="windows_x86_64"
     ;;
     darwin64)
-        autobuild="$AUTOBUILD"
         build_type="macos_x86_64"
+        autobuild="$AUTOBUILD"
+    ;;
+    linux*)
+        build_type="linux_x86_64"
+        autobuild="$AUTOBUILD"
     ;;
     *)
         echo "This project is not currently supported for $AUTOBUILD_PLATFORM" 1>&2 ; exit 1
