@@ -57,6 +57,28 @@
           <key>name</key>
           <string>darwin64</string>
         </map>
+        <key>linux64</key>
+        <map>
+          <key>build_directory</key>
+          <string>stage</string>
+          <key>configurations</key>
+          <map>
+            <key>default</key>
+            <map>
+              <key>default</key>
+              <boolean>true</boolean>
+              <key>name</key>
+              <string>default</string>
+            </map>
+          </map>
+          <key>manifest</key>
+          <array>
+            <string>include/*</string>
+            <string>lib/*</string>
+          </array>
+          <key>name</key>
+          <string>linux64</string>
+        </map>
         <key>windows64</key>
         <map>
           <key>build_directory</key>
