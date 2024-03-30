@@ -744,6 +744,8 @@ def build_webrtc(
             gn_args += [
                 'target_os="linux"',
                 'rtc_use_pipewire=false',
+                'rtc_include_pulse_audio=false',
+                'rtc_include_internal_audio_device=true',
             ]
         else:
             raise Exception(f'Target {target} is not supported')
