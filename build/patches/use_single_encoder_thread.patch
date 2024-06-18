@@ -1,0 +1,526 @@
+diff --git a/api/create_peerconnection_factory.cc b/api/create_peerconnection_factory.cc
+index f9cc7ad3e2..c85255b7b9 100644
+--- a/api/create_peerconnection_factory.cc
++++ b/api/create_peerconnection_factory.cc
+@@ -31,6 +31,7 @@ rtc::scoped_refptr<PeerConnectionFactoryInterface> CreatePeerConnectionFactory(
+     rtc::Thread* network_thread,
+     rtc::Thread* worker_thread,
+     rtc::Thread* signaling_thread,
++    rtc::Thread* encoder_thread,
+     rtc::scoped_refptr<AudioDeviceModule> default_adm,
+     rtc::scoped_refptr<AudioEncoderFactory> audio_encoder_factory,
+     rtc::scoped_refptr<AudioDecoderFactory> audio_decoder_factory,
+@@ -48,6 +49,7 @@ rtc::scoped_refptr<PeerConnectionFactoryInterface> CreatePeerConnectionFactory(
+   dependencies.network_thread = network_thread;
+   dependencies.worker_thread = worker_thread;
+   dependencies.signaling_thread = signaling_thread;
++  dependencies.encoder_thread = encoder_thread;
+   dependencies.task_queue_factory =
+       CreateDefaultTaskQueueFactory(field_trials.get());
+   dependencies.call_factory = CreateCallFactory();
+diff --git a/api/create_peerconnection_factory.h b/api/create_peerconnection_factory.h
+index efebc5f3ea..7155afe142 100644
+--- a/api/create_peerconnection_factory.h
++++ b/api/create_peerconnection_factory.h
+@@ -42,6 +42,7 @@ CreatePeerConnectionFactory(
+     rtc::Thread* network_thread,
+     rtc::Thread* worker_thread,
+     rtc::Thread* signaling_thread,
++    rtc::Thread* encoder_thread,
+     rtc::scoped_refptr<AudioDeviceModule> default_adm,
+     rtc::scoped_refptr<AudioEncoderFactory> audio_encoder_factory,
+     rtc::scoped_refptr<AudioDecoderFactory> audio_decoder_factory,
+diff --git a/api/peer_connection_interface.h b/api/peer_connection_interface.h
+index 06476ef86b..35bebf01b8 100644
+--- a/api/peer_connection_interface.h
++++ b/api/peer_connection_interface.h
+@@ -1432,6 +1432,7 @@ struct RTC_EXPORT PeerConnectionFactoryDependencies final {
+   rtc::Thread* network_thread = nullptr;
+   rtc::Thread* worker_thread = nullptr;
+   rtc::Thread* signaling_thread = nullptr;
++  rtc::Thread* encoder_thread = nullptr;
+   rtc::SocketFactory* socket_factory = nullptr;
+   // The `packet_socket_factory` will only be used if CreatePeerConnection is
+   // called without a `port_allocator`.
+diff --git a/audio/audio_send_stream.cc b/audio/audio_send_stream.cc
+index 7e033849ff..3d2b01dfe1 100644
+--- a/audio/audio_send_stream.cc
++++ b/audio/audio_send_stream.cc
+@@ -22,7 +22,6 @@
+ #include "api/crypto/frame_encryptor_interface.h"
+ #include "api/function_view.h"
+ #include "api/rtc_event_log/rtc_event_log.h"
+-#include "api/task_queue/task_queue_base.h"
+ #include "audio/audio_state.h"
+ #include "audio/channel_send.h"
+ #include "audio/conversion.h"
+@@ -103,7 +102,7 @@ AudioSendStream::AudioSendStream(
+     Clock* clock,
+     const webrtc::AudioSendStream::Config& config,
+     const rtc::scoped_refptr<webrtc::AudioState>& audio_state,
+-    TaskQueueFactory* task_queue_factory,
++    TaskQueueBase* encoder_queue,
+     RtpTransportControllerSendInterface* rtp_transport,
+     BitrateAllocatorInterface* bitrate_allocator,
+     RtcEventLog* event_log,
+@@ -114,13 +113,12 @@ AudioSendStream::AudioSendStream(
+           clock,
+           config,
+           audio_state,
+-          task_queue_factory,
+           rtp_transport,
+           bitrate_allocator,
+           event_log,
+           suspended_rtp_state,
+           voe::CreateChannelSend(clock,
+-                                 task_queue_factory,
++                                 encoder_queue,
+                                  config.send_transport,
+                                  rtcp_rtt_stats,
+                                  event_log,
+@@ -138,7 +136,6 @@ AudioSendStream::AudioSendStream(
+     Clock* clock,
+     const webrtc::AudioSendStream::Config& config,
+     const rtc::scoped_refptr<webrtc::AudioState>& audio_state,
+-    TaskQueueFactory* task_queue_factory,
+     RtpTransportControllerSendInterface* rtp_transport,
+     BitrateAllocatorInterface* bitrate_allocator,
+     RtcEventLog* event_log,
+diff --git a/audio/audio_send_stream.h b/audio/audio_send_stream.h
+index 422c815e38..6e37d69f7f 100644
+--- a/audio/audio_send_stream.h
++++ b/audio/audio_send_stream.h
+@@ -60,7 +60,7 @@ class AudioSendStream final : public webrtc::AudioSendStream,
+   AudioSendStream(Clock* clock,
+                   const webrtc::AudioSendStream::Config& config,
+                   const rtc::scoped_refptr<webrtc::AudioState>& audio_state,
+-                  TaskQueueFactory* task_queue_factory,
++                  TaskQueueBase* encoder_queue,
+                   RtpTransportControllerSendInterface* rtp_transport,
+                   BitrateAllocatorInterface* bitrate_allocator,
+                   RtcEventLog* event_log,
+@@ -71,7 +71,6 @@ class AudioSendStream final : public webrtc::AudioSendStream,
+   AudioSendStream(Clock* clock,
+                   const webrtc::AudioSendStream::Config& config,
+                   const rtc::scoped_refptr<webrtc::AudioState>& audio_state,
+-                  TaskQueueFactory* task_queue_factory,
+                   RtpTransportControllerSendInterface* rtp_transport,
+                   BitrateAllocatorInterface* bitrate_allocator,
+                   RtcEventLog* event_log,
+diff --git a/audio/channel_send.cc b/audio/channel_send.cc
+index 8d33fa7107..bdd39f2397 100644
+--- a/audio/channel_send.cc
++++ b/audio/channel_send.cc
+@@ -38,7 +38,7 @@
+ #include "rtc_base/race_checker.h"
+ #include "rtc_base/rate_limiter.h"
+ #include "rtc_base/synchronization/mutex.h"
+-#include "rtc_base/task_queue.h"
++#include "rtc_base/thread.h"
+ #include "rtc_base/time_utils.h"
+ #include "rtc_base/trace_event.h"
+ #include "system_wrappers/include/clock.h"
+@@ -62,7 +62,7 @@ class ChannelSend : public ChannelSendInterface,
+                     public RtcpPacketTypeCounterObserver {
+  public:
+   ChannelSend(Clock* clock,
+-              TaskQueueFactory* task_queue_factory,
++              TaskQueueBase* encoder_queue,
+               Transport* rtp_transport,
+               RtcpRttStats* rtcp_rtt_stats,
+               RtcEventLog* rtc_event_log,
+@@ -124,11 +124,9 @@ class ChannelSend : public ChannelSendInterface,
+   std::vector<ReportBlock> GetRemoteRTCPReportBlocks() const override;
+   CallSendStatistics GetRTCPStatistics() const override;
+ 
+-  // ProcessAndEncodeAudio() posts a task on the shared encoder task queue,
+-  // which in turn calls (on the queue) ProcessAndEncodeAudioOnTaskQueue() where
+-  // the actual processing of the audio takes place. The processing mainly
+-  // consists of encoding and preparing the result for sending by adding it to a
+-  // send queue.
++  // ProcessAndEncodeAudio() posts a task on the shared encoder thread,
++  // The processing mainly consists of encoding and preparing the result
++  // for sending by adding it to a send queue.
+   // The main reason for using a task queue here is to release the native,
+   // OS-specific, audio capture thread as soon as possible to ensure that it
+   // can go back to sleep and be prepared to deliver an new captured audio
+@@ -168,7 +166,7 @@ class ChannelSend : public ChannelSendInterface,
+                        uint32_t rtp_timestamp,
+                        rtc::ArrayView<const uint8_t> payload,
+                        int64_t absolute_capture_timestamp_ms)
+-      RTC_RUN_ON(encoder_queue_);
++      RTC_RUN_ON(*encoder_queue_);
+ 
+   void OnReceivedRtt(int64_t rtt_ms);
+ 
+@@ -203,9 +201,9 @@ class ChannelSend : public ChannelSendInterface,
+   absl::optional<int64_t> last_capture_timestamp_ms_
+       RTC_GUARDED_BY(audio_thread_race_checker_);
+ 
+-  RmsLevel rms_level_ RTC_GUARDED_BY(encoder_queue_);
++  RmsLevel rms_level_ RTC_GUARDED_BY(*encoder_queue_);
+   bool input_mute_ RTC_GUARDED_BY(volume_settings_mutex_) = false;
+-  bool previous_frame_muted_ RTC_GUARDED_BY(encoder_queue_) = false;
++  bool previous_frame_muted_ RTC_GUARDED_BY(*encoder_queue_) = false;
+ 
+   // RtcpBandwidthObserver
+   const std::unique_ptr<VoERtcpObserver> rtcp_observer_;
+@@ -224,7 +222,7 @@ class ChannelSend : public ChannelSendInterface,
+ 
+   // E2EE Audio Frame Encryption
+   rtc::scoped_refptr<FrameEncryptorInterface> frame_encryptor_
+-      RTC_GUARDED_BY(encoder_queue_);
++      RTC_GUARDED_BY(*encoder_queue_);
+   // E2EE Frame Encryption Options
+   const webrtc::CryptoOptions crypto_options_;
+ 
+@@ -232,15 +230,14 @@ class ChannelSend : public ChannelSendInterface,
+   // receives callbacks with the transformed frames; delegates calls to
+   // ChannelSend::SendRtpAudio to send the transformed audio.
+   rtc::scoped_refptr<ChannelSendFrameTransformerDelegate>
+-      frame_transformer_delegate_ RTC_GUARDED_BY(encoder_queue_);
++      frame_transformer_delegate_ RTC_GUARDED_BY(*encoder_queue_);
+ 
+   mutable Mutex rtcp_counter_mutex_;
+   RtcpPacketTypeCounter rtcp_packet_type_counter_
+       RTC_GUARDED_BY(rtcp_counter_mutex_);
+ 
+-  // Defined last to ensure that there are no running tasks when the other
+-  // members are destroyed.
+-  rtc::TaskQueue encoder_queue_;
++ 
++  TaskQueueBase* encoder_queue_;
+ };
+ 
+ const int kTelephoneEventAttenuationdB = 10;
+@@ -352,7 +349,7 @@ int32_t ChannelSend::SendData(AudioFrameType frameType,
+                               const uint8_t* payloadData,
+                               size_t payloadSize,
+                               int64_t absolute_capture_timestamp_ms) {
+-  RTC_DCHECK_RUN_ON(&encoder_queue_);
++  RTC_DCHECK_RUN_ON(encoder_queue_);
+   rtc::ArrayView<const uint8_t> payload(payloadData, payloadSize);
+   if (frame_transformer_delegate_) {
+     // Asynchronously transform the payload before sending it. After the payload
+@@ -448,7 +445,7 @@ int32_t ChannelSend::SendRtpAudio(AudioFrameType frameType,
+ 
+ ChannelSend::ChannelSend(
+     Clock* clock,
+-    TaskQueueFactory* task_queue_factory,
++    TaskQueueBase* encoder_queue,
+     Transport* rtp_transport,
+     RtcpRttStats* rtcp_rtt_stats,
+     RtcEventLog* rtc_event_log,
+@@ -469,9 +466,8 @@ ChannelSend::ChannelSend(
+           new RateLimiter(clock, kMaxRetransmissionWindowMs)),
+       frame_encryptor_(frame_encryptor),
+       crypto_options_(crypto_options),
+-      encoder_queue_(task_queue_factory->CreateTaskQueue(
+-          "AudioEncoder",
+-          TaskQueueFactory::Priority::NORMAL)) {
++      encoder_queue_(encoder_queue){
++
+   audio_coding_ = AudioCodingModule::Create();
+ 
+   RtpRtcpInterface::Configuration configuration;
+@@ -547,8 +543,8 @@ void ChannelSend::StopSend() {
+   // Wait until all pending encode tasks are executed and clear any remaining
+   // buffers in the encoder.
+   rtc::Event flush;
+-  encoder_queue_.PostTask([this, &flush]() {
+-    RTC_DCHECK_RUN_ON(&encoder_queue_);
++  encoder_queue_->PostTask([this, &flush]() {
++    RTC_DCHECK_RUN_ON(encoder_queue_);
+     CallEncoder([](AudioEncoder* encoder) { encoder->Reset(); });
+     flush.Set();
+   });
+@@ -837,9 +833,9 @@ void ChannelSend::ProcessAndEncodeAudio(
+   // Profile time between when the audio frame is added to the task queue and
+   // when the task is actually executed.
+   audio_frame->UpdateProfileTimeStamp();
+-  encoder_queue_.PostTask(
++  encoder_queue_->PostTask(
+       [this, audio_frame = std::move(audio_frame)]() mutable {
+-        RTC_DCHECK_RUN_ON(&encoder_queue_);
++        RTC_DCHECK_RUN_ON(encoder_queue_);
+         if (!encoder_queue_is_active_.load()) {
+           return;
+         }
+@@ -901,8 +897,8 @@ int64_t ChannelSend::GetRTT() const {
+ void ChannelSend::SetFrameEncryptor(
+     rtc::scoped_refptr<FrameEncryptorInterface> frame_encryptor) {
+   RTC_DCHECK_RUN_ON(&worker_thread_checker_);
+-  encoder_queue_.PostTask([this, frame_encryptor]() mutable {
+-    RTC_DCHECK_RUN_ON(&encoder_queue_);
++  encoder_queue_->PostTask([this, frame_encryptor]() mutable {
++    RTC_DCHECK_RUN_ON(encoder_queue_);
+     frame_encryptor_ = std::move(frame_encryptor);
+   });
+ }
+@@ -913,9 +909,9 @@ void ChannelSend::SetEncoderToPacketizerFrameTransformer(
+   if (!frame_transformer)
+     return;
+ 
+-  encoder_queue_.PostTask(
++  encoder_queue_->PostTask(
+       [this, frame_transformer = std::move(frame_transformer)]() mutable {
+-        RTC_DCHECK_RUN_ON(&encoder_queue_);
++        RTC_DCHECK_RUN_ON(encoder_queue_);
+         InitFrameTransformerDelegate(std::move(frame_transformer));
+       });
+ }
+@@ -928,7 +924,7 @@ void ChannelSend::OnReceivedRtt(int64_t rtt_ms) {
+ 
+ void ChannelSend::InitFrameTransformerDelegate(
+     rtc::scoped_refptr<webrtc::FrameTransformerInterface> frame_transformer) {
+-  RTC_DCHECK_RUN_ON(&encoder_queue_);
++  RTC_DCHECK_RUN_ON(encoder_queue_);
+   RTC_DCHECK(frame_transformer);
+   RTC_DCHECK(!frame_transformer_delegate_);
+ 
+@@ -938,14 +934,14 @@ void ChannelSend::InitFrameTransformerDelegate(
+       [this](AudioFrameType frameType, uint8_t payloadType,
+              uint32_t rtp_timestamp, rtc::ArrayView<const uint8_t> payload,
+              int64_t absolute_capture_timestamp_ms) {
+-        RTC_DCHECK_RUN_ON(&encoder_queue_);
++        RTC_DCHECK_RUN_ON(encoder_queue_);
+         return SendRtpAudio(frameType, payloadType, rtp_timestamp, payload,
+                             absolute_capture_timestamp_ms);
+       };
+   frame_transformer_delegate_ =
+       rtc::make_ref_counted<ChannelSendFrameTransformerDelegate>(
+           std::move(send_audio_callback), std::move(frame_transformer),
+-          &encoder_queue_);
++          encoder_queue_);
+   frame_transformer_delegate_->Init();
+ }
+ 
+@@ -953,7 +949,7 @@ void ChannelSend::InitFrameTransformerDelegate(
+ 
+ std::unique_ptr<ChannelSendInterface> CreateChannelSend(
+     Clock* clock,
+-    TaskQueueFactory* task_queue_factory,
++    TaskQueueBase* encoder_queue,
+     Transport* rtp_transport,
+     RtcpRttStats* rtcp_rtt_stats,
+     RtcEventLog* rtc_event_log,
+@@ -966,7 +962,7 @@ std::unique_ptr<ChannelSendInterface> CreateChannelSend(
+     TransportFeedbackObserver* feedback_observer,
+     const FieldTrialsView& field_trials) {
+   return std::make_unique<ChannelSend>(
+-      clock, task_queue_factory, rtp_transport, rtcp_rtt_stats, rtc_event_log,
++      clock, encoder_queue, rtp_transport, rtcp_rtt_stats, rtc_event_log,
+       frame_encryptor, crypto_options, extmap_allow_mixed,
+       rtcp_report_interval_ms, ssrc, std::move(frame_transformer),
+       feedback_observer, field_trials);
+diff --git a/audio/channel_send.h b/audio/channel_send.h
+index d969452185..1cafc0da06 100644
+--- a/audio/channel_send.h
++++ b/audio/channel_send.h
+@@ -21,10 +21,10 @@
+ #include "api/field_trials_view.h"
+ #include "api/frame_transformer_interface.h"
+ #include "api/function_view.h"
+-#include "api/task_queue/task_queue_factory.h"
+ #include "modules/rtp_rtcp/include/report_block_data.h"
+ #include "modules/rtp_rtcp/source/rtp_rtcp_interface.h"
+ #include "modules/rtp_rtcp/source/rtp_sender_audio.h"
++#include "rtc_base/thread.h"
+ 
+ namespace webrtc {
+ 
+@@ -130,7 +130,7 @@ class ChannelSendInterface {
+ 
+ std::unique_ptr<ChannelSendInterface> CreateChannelSend(
+     Clock* clock,
+-    TaskQueueFactory* task_queue_factory,
++    TaskQueueBase* encoder_queue,
+     Transport* rtp_transport,
+     RtcpRttStats* rtcp_rtt_stats,
+     RtcEventLog* rtc_event_log,
+diff --git a/audio/channel_send_frame_transformer_delegate.cc b/audio/channel_send_frame_transformer_delegate.cc
+index bf7b49527c..23252ff7b9 100644
+--- a/audio/channel_send_frame_transformer_delegate.cc
++++ b/audio/channel_send_frame_transformer_delegate.cc
+@@ -64,7 +64,7 @@ class TransformableOutgoingAudioFrame : public TransformableFrameInterface {
+ ChannelSendFrameTransformerDelegate::ChannelSendFrameTransformerDelegate(
+     SendFrameCallback send_frame_callback,
+     rtc::scoped_refptr<FrameTransformerInterface> frame_transformer,
+-    rtc::TaskQueue* encoder_queue)
++    TaskQueueBase* encoder_queue)
+     : send_frame_callback_(send_frame_callback),
+       frame_transformer_(std::move(frame_transformer)),
+       encoder_queue_(encoder_queue) {}
+diff --git a/audio/channel_send_frame_transformer_delegate.h b/audio/channel_send_frame_transformer_delegate.h
+index 6bd0af70d7..c7738c9821 100644
+--- a/audio/channel_send_frame_transformer_delegate.h
++++ b/audio/channel_send_frame_transformer_delegate.h
+@@ -38,7 +38,7 @@ class ChannelSendFrameTransformerDelegate : public TransformedFrameCallback {
+   ChannelSendFrameTransformerDelegate(
+       SendFrameCallback send_frame_callback,
+       rtc::scoped_refptr<FrameTransformerInterface> frame_transformer,
+-      rtc::TaskQueue* encoder_queue);
++      TaskQueueBase* encoder_queue);
+ 
+   // Registers `this` as callback for `frame_transformer_`, to get the
+   // transformed frames.
+@@ -75,7 +75,7 @@ class ChannelSendFrameTransformerDelegate : public TransformedFrameCallback {
+   mutable Mutex send_lock_;
+   SendFrameCallback send_frame_callback_ RTC_GUARDED_BY(send_lock_);
+   rtc::scoped_refptr<FrameTransformerInterface> frame_transformer_;
+-  rtc::TaskQueue* encoder_queue_ RTC_GUARDED_BY(send_lock_);
++  TaskQueueBase* encoder_queue_ RTC_GUARDED_BY(send_lock_);
+ };
+ 
+ std::unique_ptr<TransformableFrameInterface> CloneSenderAudioFrame(
+diff --git a/audio/channel_send_unittest.cc b/audio/channel_send_unittest.cc
+index 97882b93b7..b84fcc4cf3 100644
+--- a/audio/channel_send_unittest.cc
++++ b/audio/channel_send_unittest.cc
+@@ -59,7 +59,10 @@ class ChannelSendTest : public ::testing::Test {
+                 .trials = &field_trials_,
+             }) {
+     channel_ = voe::CreateChannelSend(
+-        time_controller_.GetClock(), time_controller_.GetTaskQueueFactory(),
++        time_controller_.GetClock(),
++        time_controller_.GetTaskQueueFactory()->CreateTaskQueue(
++-          "AudioEncoder",
++-          TaskQueueFactory::Priority::NORMAL)),
+         &transport_, nullptr, &event_log_, nullptr, crypto_options_, false,
+         kRtcpIntervalMs, kSsrc, nullptr, nullptr, field_trials_);
+     encoder_factory_ = CreateBuiltinAudioEncoderFactory();
+diff --git a/call/call.cc b/call/call.cc
+index b55492e53f..aac0384480 100644
+--- a/call/call.cc
++++ b/call/call.cc
+@@ -349,6 +349,7 @@ class Call final : public webrtc::Call,
+   TaskQueueFactory* const task_queue_factory_;
+   TaskQueueBase* const worker_thread_;
+   TaskQueueBase* const network_thread_;
++  TaskQueueBase* const encoder_thread_;
+   const std::unique_ptr<DecodeSynchronizer> decode_sync_;
+   RTC_NO_UNIQUE_ADDRESS SequenceChecker send_transport_sequence_checker_;
+ 
+@@ -668,6 +669,8 @@ Call::Call(Clock* clock,
+       // must be made on `worker_thread_` (i.e. they're one and the same).
+       network_thread_(config.network_task_queue_ ? config.network_task_queue_
+                                                  : worker_thread_),
++      encoder_thread_(config.encoder_task_queue_ ? config.encoder_task_queue_
++                                                 : worker_thread_),
+       decode_sync_(config.metronome
+                        ? std::make_unique<DecodeSynchronizer>(clock_,
+                                                               config.metronome,
+@@ -778,7 +781,7 @@ webrtc::AudioSendStream* Call::CreateAudioSendStream(
+   }
+ 
+   AudioSendStream* send_stream = new AudioSendStream(
+-      clock_, config, config_.audio_state, task_queue_factory_,
++      clock_, config, config_.audio_state, encoder_thread_,
+       transport_send_.get(), bitrate_allocator_.get(), event_log_,
+       call_stats_->AsRtcpRttStats(), suspended_rtp_state, trials());
+   RTC_DCHECK(audio_send_ssrcs_.find(config.rtp.ssrc) ==
+diff --git a/call/call_config.cc b/call/call_config.cc
+index 93f6b1aec4..2adf377823 100644
+--- a/call/call_config.cc
++++ b/call/call_config.cc
+@@ -15,8 +15,9 @@
+ namespace webrtc {
+ 
+ CallConfig::CallConfig(RtcEventLog* event_log,
+-                       TaskQueueBase* network_task_queue /* = nullptr*/)
+-    : event_log(event_log), network_task_queue_(network_task_queue) {
++                       TaskQueueBase* network_task_queue, /* = nullptr*/
++                       TaskQueueBase* encoder_task_queue /* = nullptr*/)
++    : event_log(event_log), network_task_queue_(network_task_queue), encoder_task_queue_(encoder_task_queue) {
+   RTC_DCHECK(event_log);
+ }
+ 
+diff --git a/call/call_config.h b/call/call_config.h
+index 6df4ab7ed4..7f3b40c3b1 100644
+--- a/call/call_config.h
++++ b/call/call_config.h
+@@ -33,7 +33,8 @@ struct CallConfig {
+   // related callbacks will be made on the same TQ as the Call instance was
+   // constructed on.
+   explicit CallConfig(RtcEventLog* event_log,
+-                      TaskQueueBase* network_task_queue = nullptr);
++                      TaskQueueBase* network_task_queue = nullptr,
++                      TaskQueueBase* encoder_task_queue = nullptr);
+   CallConfig(const CallConfig&);
+   RtpTransportConfig ExtractTransportConfig() const;
+   ~CallConfig();
+@@ -73,6 +74,9 @@ struct CallConfig {
+   const FieldTrialsView* trials = nullptr;
+ 
+   TaskQueueBase* const network_task_queue_ = nullptr;
++
++  TaskQueueBase* const encoder_task_queue_ = nullptr;
++
+   // RtpTransportControllerSend to use for this call.
+   RtpTransportControllerSendFactoryInterface*
+       rtp_transport_controller_send_factory = nullptr;
+diff --git a/pc/connection_context.cc b/pc/connection_context.cc
+index ec6f21cc13..27b54ca911 100644
+--- a/pc/connection_context.cc
++++ b/pc/connection_context.cc
+@@ -96,6 +96,13 @@ ConnectionContext::ConnectionContext(
+                      }),
+       signaling_thread_(MaybeWrapThread(dependencies->signaling_thread,
+                                         wraps_current_thread_)),
++      encoder_thread_(dependencies->encoder_thread,
++                      []() {
++                        auto thread_holder = rtc::Thread::Create();
++                        thread_holder->SetName("EncoderThread", nullptr);
++                        thread_holder->Start();
++                        return thread_holder;
++                      }),
+       trials_(dependencies->trials ? std::move(dependencies->trials)
+                                    : std::make_unique<FieldTrialBasedConfig>()),
+       media_engine_(std::move(dependencies->media_engine)),
+diff --git a/pc/connection_context.h b/pc/connection_context.h
+index 0fe20c7890..1885411496 100644
+--- a/pc/connection_context.h
++++ b/pc/connection_context.h
+@@ -75,6 +75,8 @@ class ConnectionContext final
+   const rtc::Thread* worker_thread() const { return worker_thread_.get(); }
+   rtc::Thread* network_thread() { return network_thread_; }
+   const rtc::Thread* network_thread() const { return network_thread_; }
++  rtc::Thread* encoder_thread() { return encoder_thread_.get(); }
++  const rtc::Thread* encoder_thread() const { return encoder_thread_.get(); }
+ 
+   // Field trials associated with the PeerConnectionFactory.
+   // Note: that there can be different field trials for different
+@@ -118,6 +120,7 @@ class ConnectionContext final
+   rtc::Thread* const network_thread_;
+   AlwaysValidPointer<rtc::Thread> const worker_thread_;
+   rtc::Thread* const signaling_thread_;
++  AlwaysValidPointer<rtc::Thread> const encoder_thread_;
+ 
+   // Accessed both on signaling thread and worker thread.
+   std::unique_ptr<FieldTrialsView> const trials_;
+diff --git a/pc/peer_connection_factory.cc b/pc/peer_connection_factory.cc
+index eaa69d3e7c..ca017d9892 100644
+--- a/pc/peer_connection_factory.cc
++++ b/pc/peer_connection_factory.cc
+@@ -306,7 +306,7 @@ std::unique_ptr<Call> PeerConnectionFactory::CreateCall_w(
+     const PeerConnectionInterface::RTCConfiguration& configuration) {
+   RTC_DCHECK_RUN_ON(worker_thread());
+ 
+-  webrtc::Call::Config call_config(event_log, network_thread());
++  webrtc::Call::Config call_config(event_log, network_thread(), encoder_thread());
+   if (!media_engine() || !context_->call_factory()) {
+     return nullptr;
+   }
+diff --git a/pc/peer_connection_factory.h b/pc/peer_connection_factory.h
+index f55d09f6d8..38cf8bfec5 100644
+--- a/pc/peer_connection_factory.h
++++ b/pc/peer_connection_factory.h
+@@ -133,6 +133,8 @@ class PeerConnectionFactory : public PeerConnectionFactoryInterface {
+  private:
+   rtc::Thread* network_thread() const { return context_->network_thread(); }
+ 
++  rtc::Thread* encoder_thread() const { return context_->encoder_thread(); }
++
+   bool IsTrialEnabled(absl::string_view key) const;
+ 
+   std::unique_ptr<RtcEventLog> CreateRtcEventLog_w();
