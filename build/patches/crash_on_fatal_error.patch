@@ -1,8 +1,8 @@
 diff --git a/rtc_base/checks.cc b/rtc_base/checks.cc
-index e732a2659d..29baf495e4 100644
+index e732a2659d..cbdd545ccb 100644
 --- a/rtc_base/checks.cc
 +++ b/rtc_base/checks.cc
-@@ -69,13 +69,22 @@ RTC_NORETURN void WriteFatalLog(absl::string_view output) {
+@@ -69,13 +69,26 @@ RTC_NORETURN void WriteFatalLog(absl::string_view output) {
    __android_log_print(ANDROID_LOG_ERROR, RTC_LOG_TAG_ANDROID, "%s\n",
                        output_str.c_str());
  #endif
@@ -22,7 +22,11 @@ index e732a2659d..29baf495e4 100644
 +  *null_ptr = 0xDEADBEEF;
 +  while (true)
 +  {
++#if defined(WEBRTC_WIN)
 +    _sleep(1);
++#else
++    sleep(1);
++#endif
 +  }
  }
  
