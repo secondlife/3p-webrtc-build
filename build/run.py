@@ -191,6 +191,7 @@ PATCHES = {
         'bug_8759_workaround.patch',
         'msvc-checks-template.patch',
         'disable_mute_of_audio_processing.patch',
+        'crash_on_fatal_error.patch',
     ],
     'windows_x86': [
         'add_license_dav1d.patch',
@@ -202,6 +203,7 @@ PATCHES = {
         'bug_8759_workaround.patch',
         'msvc-checks-template.patch',
         'disable_mute_of_audio_processing.patch',
+        'crash_on_fatal_error.patch',
     ],
     'windows_arm64': [
         'add_license_dav1d.patch',
@@ -213,6 +215,7 @@ PATCHES = {
         'bug_8759_workaround.patch',
         'msvc-checks-template.patch'
         'disable_mute_of_audio_processing.patch',
+        'crash_on_fatal_error.patch',
     ],
     'macos_x86_64': [
         'add_license_dav1d.patch',
@@ -221,6 +224,7 @@ PATCHES = {
         'upsample-to-48khz-for-echo-cancellation-for-now.patch',
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
+        'crash_on_fatal_error.patch',
     ],
     'macos_arm64': [
         'add_license_dav1d.patch',
@@ -229,6 +233,7 @@ PATCHES = {
         'upsample-to-48khz-for-echo-cancellation-for-now.patch',
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
+        'crash_on_fatal_error.patch',
     ],
     'ios': [
         'add_license_dav1d.patch',
@@ -237,6 +242,7 @@ PATCHES = {
         'upsample-to-48khz-for-echo-cancellation-for-now.patch',
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
+        'crash_on_fatal_error.patch',
     ],
     'android': [
         'add_license_dav1d.patch',
@@ -245,6 +251,7 @@ PATCHES = {
         'upsample-to-48khz-for-echo-cancellation-for-now.patch',
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
+        'crash_on_fatal_error.patch',
     ],
     'android_prefixed': [
         'add_license_dav1d.patch',
@@ -252,6 +259,7 @@ PATCHES = {
         'fix_mocks.patch',
         'jni_prefix.patch',
         'disable_mute_of_audio_processing.patch',
+        'crash_on_fatal_error.patch',
     ],
     'raspberry-pi-os_armv6': [
         'add_license_dav1d.patch',
@@ -259,6 +267,7 @@ PATCHES = {
         'upsample-to-48khz-for-echo-cancellation-for-now.patch',
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
+        'crash_on_fatal_error.patch',
     ],
     'raspberry-pi-os_armv7': [
         'add_license_dav1d.patch',
@@ -266,6 +275,7 @@ PATCHES = {
         'upsample-to-48khz-for-echo-cancellation-for-now.patch',
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
+        'crash_on_fatal_error.patch',
     ],
     'raspberry-pi-os_armv8': [
         'add_license_dav1d.patch',
@@ -273,6 +283,7 @@ PATCHES = {
         'upsample-to-48khz-for-echo-cancellation-for-now.patch',
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
+        'crash_on_fatal_error.patch',
     ],
     'ubuntu-18.04_armv8': [
         'add_license_dav1d.patch',
@@ -280,6 +291,7 @@ PATCHES = {
         'upsample-to-48khz-for-echo-cancellation-for-now.patch',
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
+        'crash_on_fatal_error.patch',
     ],
     'ubuntu-20.04_armv8': [
         'add_license_dav1d.patch',
@@ -287,6 +299,7 @@ PATCHES = {
         'upsample-to-48khz-for-echo-cancellation-for-now.patch',
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
+        'crash_on_fatal_error.patch',
     ],
     'ubuntu-18.04_x86_64': [
         'add_license_dav1d.patch',
@@ -294,6 +307,7 @@ PATCHES = {
         'upsample-to-48khz-for-echo-cancellation-for-now.patch',
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
+        'crash_on_fatal_error.patch',
     ],
     'ubuntu-20.04_x86_64': [
         'add_license_dav1d.patch',
@@ -301,6 +315,7 @@ PATCHES = {
         'upsample-to-48khz-for-echo-cancellation-for-now.patch',
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
+        'crash_on_fatal_error.patch',
     ],
     'ubuntu-22.04_x86_64': [
         'add_license_dav1d.patch',
@@ -308,6 +323,7 @@ PATCHES = {
         'upsample-to-48khz-for-echo-cancellation-for-now.patch',
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
+        'crash_on_fatal_error.patch',
     ],
 }
 
