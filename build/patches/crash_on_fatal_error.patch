@@ -1,0 +1,29 @@
+diff --git a/rtc_base/checks.cc b/rtc_base/checks.cc
+index e732a2659d..29baf495e4 100644
+--- a/rtc_base/checks.cc
++++ b/rtc_base/checks.cc
+@@ -69,13 +69,22 @@ RTC_NORETURN void WriteFatalLog(absl::string_view output) {
+   __android_log_print(ANDROID_LOG_ERROR, RTC_LOG_TAG_ANDROID, "%s\n",
+                       output_str.c_str());
+ #endif
++  // write to stdout so that it ends up in the logs.
++  fwrite(output.data(), output.size(), 1, stdout);
+   fflush(stdout);
+   fwrite(output.data(), output.size(), 1, stderr);
+   fflush(stderr);
+ #if defined(WEBRTC_WIN)
+-  DebugBreak();
++//  DebugBreak();
+ #endif
+-  abort();
++  // force a crash so that the crash logger can capture the exception.
++  long* null_ptr;
++  null_ptr = 0;
++  *null_ptr = 0xDEADBEEF;
++  while (true)
++  {
++    _sleep(1);
++  }
+ }
+ 
+ RTC_NORETURN void WriteFatalLog(const char* file,
