@@ -67,8 +67,8 @@ jobs:
       output-artifact-id: ${{ steps.artifact-upload-step.outputs.artifact-id }}
     steps:
     - uses: actions/checkout@v4
-    - name: Select Xcode 13.0
-      run: sudo xcode-select --switch /Applications/Xcode_13.0.app/Contents/Developer
+    - name: Select Xcode 14.0.1
+      run: sudo xcode-select --switch /Applications/Xcode_14.0.1.app/Contents/Developer
     - run: brew install ninja
     - name: Determine Release Tag
       env:
