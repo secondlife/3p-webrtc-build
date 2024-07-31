@@ -1,5 +1,5 @@
 diff --git a/rtc_base/checks.cc b/rtc_base/checks.cc
-index e732a2659d..593918e02f 100644
+index e732a2659d..606dd76bfe 100644
 --- a/rtc_base/checks.cc
 +++ b/rtc_base/checks.cc
 @@ -16,6 +16,7 @@
@@ -19,7 +19,13 @@ index e732a2659d..593918e02f 100644
  #endif
  
  #if defined(WEBRTC_WIN)
-@@ -69,13 +72,28 @@ RTC_NORETURN void WriteFatalLog(absl::string_view output) {
+@@ -64,18 +67,33 @@ namespace webrtc_checks_impl {
+ 
+ #if !defined(WEBRTC_CHROMIUM_BUILD)
+ RTC_NORETURN void WriteFatalLog(absl::string_view output) {
+-#if defined(WEBRTC_ANDROID)
+   std::string output_str(output);
++#if defined(WEBRTC_ANDROID)
    __android_log_print(ANDROID_LOG_ERROR, RTC_LOG_TAG_ANDROID, "%s\n",
                        output_str.c_str());
  #endif
@@ -29,7 +35,7 @@ index e732a2659d..593918e02f 100644
    fwrite(output.data(), output.size(), 1, stderr);
    fflush(stderr);
 +  // attempt to notify the logging subsystem to broadcast to the sinks.
-+  RTC_LOG(LS_ERROR) << output_str.c_str() << "\n";
++  RTC_LOG(LS_ERROR) << output_str << "\n";
  #if defined(WEBRTC_WIN)
 -  DebugBreak();
 +//  DebugBreak();
