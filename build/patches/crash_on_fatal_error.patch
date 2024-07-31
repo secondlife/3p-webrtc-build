@@ -1,8 +1,16 @@
 diff --git a/rtc_base/checks.cc b/rtc_base/checks.cc
-index e732a2659d..72b235fd4f 100644
+index e732a2659d..593918e02f 100644
 --- a/rtc_base/checks.cc
 +++ b/rtc_base/checks.cc
-@@ -24,6 +24,8 @@
+@@ -16,6 +16,7 @@
+ #include <cstdlib>
+ 
+ #include "absl/strings/string_view.h"
++#include "logging.h"
+ 
+ #if defined(WEBRTC_ANDROID)
+ #define RTC_LOG_TAG_ANDROID "rtc"
+@@ -24,6 +25,8 @@
  
  #if defined(WEBRTC_WIN)
  #include <windows.h>
@@ -11,7 +19,7 @@ index e732a2659d..72b235fd4f 100644
  #endif
  
  #if defined(WEBRTC_WIN)
-@@ -69,13 +71,26 @@ RTC_NORETURN void WriteFatalLog(absl::string_view output) {
+@@ -69,13 +72,28 @@ RTC_NORETURN void WriteFatalLog(absl::string_view output) {
    __android_log_print(ANDROID_LOG_ERROR, RTC_LOG_TAG_ANDROID, "%s\n",
                        output_str.c_str());
  #endif
@@ -20,6 +28,8 @@ index e732a2659d..72b235fd4f 100644
    fflush(stdout);
    fwrite(output.data(), output.size(), 1, stderr);
    fflush(stderr);
++  // attempt to notify the logging subsystem to broadcast to the sinks.
++  RTC_LOG(LS_ERROR) << output_str.c_str() << "\n";
  #if defined(WEBRTC_WIN)
 -  DebugBreak();
 +//  DebugBreak();
