@@ -54,11 +54,11 @@ jobs:
           # - macos_arm64
           - macos_x86_64
           # - ios
-    runs-on: macos-11
+    runs-on: macos-12
     steps:
     - uses: actions/checkout@v4
-    - name: Select Xcode 13.0
-      run: sudo xcode-select --switch /Applications/Xcode_13.0.app/Contents/Developer
+    - name: Select Xcode 14.0.1
+      run: sudo xcode-select --switch /Applications/Xcode_14.0.1.app/Contents/Developer
     - run: brew install ninja
     - run: ./build.${{ matrix.name }}.sh "${{ github.event.inputs.commitHash }}"
     - name: Upload Artifact
