@@ -1,14 +1,5 @@
-From 82a4fa0b2e4b6cc37a7c4dbb37d705f78405c187 Mon Sep 17 00:00:00 2001
-From: Roxie Linden <roxie@lindenlab.com>
-Date: Mon, 8 Jan 2024 20:09:24 -0800
-Subject: [PATCH] upsample to 48khz for echo cancellation (for now)
-
----
- audio/audio_transport_impl.cc | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
-
 diff --git a/audio/audio_transport_impl.cc b/audio/audio_transport_impl.cc
-index 42a81d5b4a..24de07d613 100644
+index 42a81d5b4a..18d09aedc5 100644
 --- a/audio/audio_transport_impl.cc
 +++ b/audio/audio_transport_impl.cc
 @@ -36,7 +36,9 @@ void InitializeCaptureFrame(int input_sample_rate,
@@ -22,6 +13,12 @@ index 42a81d5b4a..24de07d613 100644
    for (int native_rate_hz : AudioProcessing::kNativeSampleRatesHz) {
      audio_frame->sample_rate_hz_ = native_rate_hz;
      if (audio_frame->sample_rate_hz_ >= min_processing_rate_hz) {
--- 
-2.43.0.windows.1
-
+@@ -139,7 +141,7 @@ int32_t AudioTransportImpl::RecordedDataIsAvailable(
+         estimated_capture_time_ns) {  // NOLINT: to avoid changing APIs
+   RTC_DCHECK(audio_data);
+   RTC_DCHECK_GE(number_of_channels, 1);
+-  RTC_DCHECK_LE(number_of_channels, 2);
++  RTC_DCHECK_LE(number_of_channels, 8); // allow up to 8 input channels, which will be remixed as appropriate
+   RTC_DCHECK_EQ(2 * number_of_channels, bytes_per_sample);
+   RTC_DCHECK_GE(sample_rate, AudioProcessing::NativeRate::kSampleRate8kHz);
+   // 100 = 1 second / data duration (10 ms).
