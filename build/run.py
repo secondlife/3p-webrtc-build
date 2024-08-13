@@ -221,7 +221,7 @@ PATCHES = {
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
         'crash_on_fatal_error.patch',
-        'dont_fatal_error_on_audio_device_stop.patch",
+        'dont_fatal_error_on_audio_device_stop.patch',
     ],
     'macos_arm64': [
         'add_license_dav1d.patch',
@@ -231,7 +231,7 @@ PATCHES = {
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
         'crash_on_fatal_error.patch',
-        'dont_fatal_error_on_audio_device_stop.patch",
+        'dont_fatal_error_on_audio_device_stop.patch',
     ],
     'ios': [
         'add_license_dav1d.patch',
