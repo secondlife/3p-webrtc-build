@@ -1,0 +1,30 @@
+diff --git a/modules/audio_device/mac/audio_device_mac.cc b/modules/audio_device/mac/audio_device_mac.cc
+index 0a371737b3..e3a902270d 100644
+--- a/modules/audio_device/mac/audio_device_mac.cc
++++ b/modules/audio_device/mac/audio_device_mac.cc
+@@ -2096,12 +2096,6 @@ int32_t AudioDeviceMac::HandleStreamFormatChange(
+     return -1;
+   }
+ 
+-  if (_ptrAudioBuffer && streamFormat.mChannelsPerFrame != _recChannels) {
+-    RTC_LOG(LS_ERROR) << "Changing channels not supported (mChannelsPerFrame = "
+-                      << streamFormat.mChannelsPerFrame << ")";
+-    return -1;
+-  }
+-
+   RTC_LOG(LS_VERBOSE) << "Stream format:";
+   RTC_LOG(LS_VERBOSE) << "mSampleRate = " << streamFormat.mSampleRate
+                       << ", mChannelsPerFrame = "
+@@ -2115,6 +2109,12 @@ int32_t AudioDeviceMac::HandleStreamFormatChange(
+   logCAMsg(rtc::LS_VERBOSE, "mFormatID", (const char*)&streamFormat.mFormatID);
+ 
+   if (propertyAddress.mScope == kAudioDevicePropertyScopeInput) {
++    if (_ptrAudioBuffer && streamFormat.mChannelsPerFrame != _recChannels) {
++      RTC_LOG(LS_ERROR) << "Changing channels not supported (mChannelsPerFrame = "
++                        << streamFormat.mChannelsPerFrame << ")";
++      return -1;
++    }
++
+     const int io_block_size_samples = streamFormat.mChannelsPerFrame *
+                                       streamFormat.mSampleRate / 100 *
+                                       N_BLOCKS_IO;
