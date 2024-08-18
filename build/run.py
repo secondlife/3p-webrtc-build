@@ -221,7 +221,6 @@ PATCHES = {
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
         'crash_on_fatal_error.patch',
-        'dont_fatal_error_on_audio_device_stop.patch',
         'airpod_fixes.patch',
     ],
     'macos_arm64': [
@@ -232,7 +231,6 @@ PATCHES = {
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
         'crash_on_fatal_error.patch',
-        'dont_fatal_error_on_audio_device_stop.patch',
         'airpod_fixes.patch',
     ],
     'ios': [
