@@ -221,8 +221,8 @@ PATCHES = {
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
         'crash_on_fatal_error.patch',
-        'dont_fatal_error_on_audio_device_stop.patch',
         'Revert-mac-Work-around-an-inccorect-availability-ann.patch',
+        'airpod_fixes.patch',
     ],
     'macos_arm64': [
         'add_license_dav1d.patch',
@@ -232,8 +232,8 @@ PATCHES = {
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
         'crash_on_fatal_error.patch',
-        'dont_fatal_error_on_audio_device_stop.patch',
         'Revert-mac-Work-around-an-inccorect-availability-ann.patch',
+        'airpod_fixes.patch',
     ],
     'ios': [
         'add_license_dav1d.patch',
