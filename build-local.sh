@@ -51,8 +51,7 @@ case "$AUTOBUILD_PLATFORM" in
 esac
 
 pushd "$build"
-python run.py build "$build_type" --debug --source-dir /c/webrtc --build-dir /c/webrtc-build --commit m114_release
-python run.py package "$build_type" --debug --source-dir /c/webrtc --build-dir /c/webrtc-build
+bash ./build."$build_type".sh m114_release
 
 source_environment_tempfile="$stage/source_environment.sh"
 autobuild source_environment > "$source_environment_tempfile"
