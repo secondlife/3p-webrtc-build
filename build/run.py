@@ -221,6 +221,7 @@ PATCHES = {
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
         'crash_on_fatal_error.patch',
+        'Revert-mac-Work-around-an-inccorect-availability-ann.patch',
         'airpod_fixes.patch',
     ],
     'macos_arm64': [
@@ -231,6 +232,7 @@ PATCHES = {
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
         'crash_on_fatal_error.patch',
+        'Revert-mac-Work-around-an-inccorect-availability-ann.patch',
         'airpod_fixes.patch',
     ],
     'ios': [
@@ -756,7 +758,7 @@ def build_webrtc(
             gn_args += [
                 'target_os="mac"',
                 f'target_cpu="{"x64" if target == "macos_x86_64" else "arm64"}"',
-                'mac_deployment_target="10.11"',
+                'mac_deployment_target="11.0"',
                 'enable_stripping=true',
                 'enable_dsyms=true',
                 'rtc_libvpx_build_vp9=true',
@@ -796,7 +798,7 @@ def build_webrtc(
                 'rtc_use_pipewire=false',
                 "use_custom_libcxx=false",
                 "use_custom_libcxx_for_host=false",
-                'rtc_include_pulse_audio=false',
+                'rtc_include_pulse_audio=true',
                 'rtc_include_internal_audio_device=true',
             ]
         else:
@@ -1213,7 +1215,7 @@ def main():
             commit = version_info.webrtc_commit
             if args.commit:
                 commit = args.commit
-            
+
             print("Building for commit: ", commit)
 
             # ソース取得
