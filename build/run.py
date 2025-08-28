@@ -1287,6 +1287,8 @@ def main():
                 build_webrtc(**build_webrtc_args, target=args.target)
 
     if args.op == 'package':
+        dir = get_depot_tools(source_dir)
+        add_path(dir)
         mkdir_p(package_dir)
         with cd(BASE_DIR):
             package_webrtc(source_dir, build_dir, package_dir, args.target,
