@@ -1,0 +1,506 @@
+diff --git a/modules/audio_device/win/audio_device_core_win.cc b/modules/audio_device/win/audio_device_core_win.cc
+index f1cc0474fc..f29f8590b7 100644
+--- a/modules/audio_device/win/audio_device_core_win.cc
++++ b/modules/audio_device/win/audio_device_core_win.cc
+@@ -1845,6 +1845,7 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
+ 
+   HRESULT hr = S_OK;
+   WAVEFORMATEX* pWfxOut = NULL;
++  bool initialized_with_mix = false;
+   WAVEFORMATEX Wfx = WAVEFORMATEX();
+   WAVEFORMATEX* pWfxClosestMatch = NULL;
+ 
+@@ -1876,122 +1877,158 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
+     RTC_LOG(LS_VERBOSE) << "cbSize         : " << pWfxOut->cbSize;
+   }
+ 
+-  // Set wave format
+-  Wfx.wFormatTag = WAVE_FORMAT_PCM;
+-  Wfx.wBitsPerSample = 16;
+-  Wfx.cbSize = 0;
+-
+-  const int freqs[] = {48000, 44100, 16000, 96000, 32000, 8000};
+-  hr = S_FALSE;
+-
+-  // Iterate over frequencies and channels, in order of priority
+-  for (unsigned int freq = 0; freq < sizeof(freqs) / sizeof(freqs[0]); freq++) {
+-    for (unsigned int chan = 0; chan < sizeof(_playChannelsPrioList) /
+-                                           sizeof(_playChannelsPrioList[0]);
+-         chan++) {
+-      Wfx.nChannels = _playChannelsPrioList[chan];
+-      Wfx.nSamplesPerSec = freqs[freq];
+-      Wfx.nBlockAlign = Wfx.nChannels * Wfx.wBitsPerSample / 8;
+-      Wfx.nAvgBytesPerSec = Wfx.nSamplesPerSec * Wfx.nBlockAlign;
+-      // If the method succeeds and the audio endpoint device supports the
+-      // specified stream format, it returns S_OK. If the method succeeds and
+-      // provides a closest match to the specified format, it returns S_FALSE.
+-      hr = _ptrClientOut->IsFormatSupported(AUDCLNT_SHAREMODE_SHARED, &Wfx,
+-                                            &pWfxClosestMatch);
+-      if (hr == S_OK) {
+-        break;
+-      } else {
+-        if (pWfxClosestMatch) {
+-          RTC_LOG(LS_INFO) << "nChannels=" << Wfx.nChannels
+-                           << ", nSamplesPerSec=" << Wfx.nSamplesPerSec
+-                           << " is not supported. Closest match: "
+-                              "nChannels="
+-                           << pWfxClosestMatch->nChannels << ", nSamplesPerSec="
+-                           << pWfxClosestMatch->nSamplesPerSec;
+-          CoTaskMemFree(pWfxClosestMatch);
+-          pWfxClosestMatch = NULL;
++  // -------- Try initializing with the engine's mix format first (roxanneskelly) --------
++  if (pWfxOut) {
++    REFERENCE_TIME hnsBufferDuration = 0;
++    if (pWfxOut->nSamplesPerSec == 44100) {
++        // Retain the larger-buffer workaround for 44.1 kHz.
++        hnsBufferDuration = 30 * 10000;  // 30 ms
++    }
++    hr = _ptrClientOut->Initialize(AUDCLNT_SHAREMODE_SHARED,
++                                   AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
++                                   hnsBufferDuration, 0, pWfxOut, NULL);
++    if (SUCCEEDED(hr)) {
++      _playAudioFrameSize = pWfxOut->nBlockAlign;
++      _playBlockSize = pWfxOut->nSamplesPerSec / 100;  // 10 ms
++      _playSampleRate = pWfxOut->nSamplesPerSec;
++      _devicePlaySampleRate = pWfxOut->nSamplesPerSec;
++      _devicePlayBlockSize = pWfxOut->nSamplesPerSec / 100;
++      _playChannels = pWfxOut->nChannels;
++      initialized_with_mix = true;
++    }
++    else {
++      RTC_LOG(LS_WARNING) << "Initialize(shared, mix format) failed; will "
++                              "fall back to legacy PCM probe.";
++    }
++  }
++  if (!initialized_with_mix) {
++    // Set wave format
++    Wfx.wFormatTag = WAVE_FORMAT_PCM;
++    Wfx.wBitsPerSample = 16;
++    Wfx.cbSize = 0;
++
++    const int freqs[] = {48000, 44100, 16000, 96000, 32000, 8000};
++    hr = S_FALSE;
++
++    // Iterate over frequencies and channels, in order of priority
++    for (unsigned int freq = 0; freq < sizeof(freqs) / sizeof(freqs[0]);
++         freq++) {
++      for (unsigned int chan = 0; chan < sizeof(_playChannelsPrioList) /
++                                             sizeof(_playChannelsPrioList[0]);
++           chan++) {
++        Wfx.nChannels = _playChannelsPrioList[chan];
++        Wfx.nSamplesPerSec = freqs[freq];
++        Wfx.nBlockAlign = Wfx.nChannels * Wfx.wBitsPerSample / 8;
++        Wfx.nAvgBytesPerSec = Wfx.nSamplesPerSec * Wfx.nBlockAlign;
++        // If the method succeeds and the audio endpoint device supports the
++        // specified stream format, it returns S_OK. If the method succeeds and
++        // provides a closest match to the specified format, it returns S_FALSE.
++        hr = _ptrClientOut->IsFormatSupported(AUDCLNT_SHAREMODE_SHARED, &Wfx,
++                                              &pWfxClosestMatch);
++        if (hr == S_OK) {
++          break;
+         } else {
+-          RTC_LOG(LS_INFO) << "nChannels=" << Wfx.nChannels
+-                           << ", nSamplesPerSec=" << Wfx.nSamplesPerSec
+-                           << " is not supported. No closest match.";
++          if (pWfxClosestMatch) {
++            RTC_LOG(LS_INFO)
++                << "nChannels=" << Wfx.nChannels
++                << ", nSamplesPerSec=" << Wfx.nSamplesPerSec
++                << " is not supported. Closest match: "
++                   "nChannels="
++                << pWfxClosestMatch->nChannels
++                << ", nSamplesPerSec=" << pWfxClosestMatch->nSamplesPerSec;
++            CoTaskMemFree(pWfxClosestMatch);
++            pWfxClosestMatch = NULL;
++          } else {
++            RTC_LOG(LS_INFO) << "nChannels=" << Wfx.nChannels
++                             << ", nSamplesPerSec=" << Wfx.nSamplesPerSec
++                             << " is not supported. No closest match.";
++          }
+         }
+       }
++      if (hr == S_OK)
++        break;
+     }
+-    if (hr == S_OK)
+-      break;
+-  }
+ 
+-  // TODO(andrew): what happens in the event of failure in the above loop?
+-  //   Is _ptrClientOut->Initialize expected to fail?
+-  //   Same in InitRecording().
+-  if (hr == S_OK) {
+-    _playAudioFrameSize = Wfx.nBlockAlign;
+-    // Block size is the number of samples each channel in 10ms.
+-    _playBlockSize = Wfx.nSamplesPerSec / 100;
+-    _playSampleRate = Wfx.nSamplesPerSec;
+-    _devicePlaySampleRate =
+-        Wfx.nSamplesPerSec;  // The device itself continues to run at 44.1 kHz.
+-    _devicePlayBlockSize = Wfx.nSamplesPerSec / 100;
+-    _playChannels = Wfx.nChannels;
+-
+-    RTC_LOG(LS_VERBOSE) << "VoE selected this rendering format:";
+-    RTC_LOG(LS_VERBOSE) << "wFormatTag         : 0x"
+-                        << webrtc::ToHex(Wfx.wFormatTag) << " ("
+-                        << Wfx.wFormatTag << ")";
+-    RTC_LOG(LS_VERBOSE) << "nChannels          : " << Wfx.nChannels;
+-    RTC_LOG(LS_VERBOSE) << "nSamplesPerSec     : " << Wfx.nSamplesPerSec;
+-    RTC_LOG(LS_VERBOSE) << "nAvgBytesPerSec    : " << Wfx.nAvgBytesPerSec;
+-    RTC_LOG(LS_VERBOSE) << "nBlockAlign        : " << Wfx.nBlockAlign;
+-    RTC_LOG(LS_VERBOSE) << "wBitsPerSample     : " << Wfx.wBitsPerSample;
+-    RTC_LOG(LS_VERBOSE) << "cbSize             : " << Wfx.cbSize;
+-    RTC_LOG(LS_VERBOSE) << "Additional settings:";
+-    RTC_LOG(LS_VERBOSE) << "_playAudioFrameSize: " << _playAudioFrameSize;
+-    RTC_LOG(LS_VERBOSE) << "_playBlockSize     : " << _playBlockSize;
+-    RTC_LOG(LS_VERBOSE) << "_playChannels      : " << _playChannels;
+-  }
+-
+-  // Create a rendering stream.
+-  //
+-  // ****************************************************************************
+-  // For a shared-mode stream that uses event-driven buffering, the caller must
+-  // set both hnsPeriodicity and hnsBufferDuration to 0. The Initialize method
+-  // determines how large a buffer to allocate based on the scheduling period
+-  // of the audio engine. Although the client's buffer processing thread is
+-  // event driven, the basic buffer management process, as described previously,
+-  // is unaltered.
+-  // Each time the thread awakens, it should call
+-  // IAudioClient::GetCurrentPadding to determine how much data to write to a
+-  // rendering buffer or read from a capture buffer. In contrast to the two
+-  // buffers that the Initialize method allocates for an exclusive-mode stream
+-  // that uses event-driven buffering, a shared-mode stream requires a single
+-  // buffer.
+-  // ****************************************************************************
+-  //
+-  REFERENCE_TIME hnsBufferDuration =
+-      0;  // ask for minimum buffer size (default)
+-  if (_devicePlaySampleRate == 44100) {
+-    // Ask for a larger buffer size (30ms) when using 44.1kHz as render rate.
+-    // There seems to be a larger risk of underruns for 44.1 compared
+-    // with the default rate (48kHz). When using default, we set the requested
+-    // buffer duration to 0, which sets the buffer to the minimum size
+-    // required by the engine thread. The actual buffer size can then be
+-    // read by GetBufferSize() and it is 20ms on most machines.
+-    hnsBufferDuration = 30 * 10000;
+-  }
+-  hr = _ptrClientOut->Initialize(
+-      AUDCLNT_SHAREMODE_SHARED,  // share Audio Engine with other applications
+-      AUDCLNT_STREAMFLAGS_EVENTCALLBACK,  // processing of the audio buffer by
+-                                          // the client will be event driven
+-      hnsBufferDuration,  // requested buffer capacity as a time value (in
+-                          // 100-nanosecond units)
+-      0,                  // periodicity
+-      &Wfx,               // selected wave format
+-      NULL);              // session GUID
++    // TODO(andrew): what happens in the event of failure in the above loop?
++    //   Is _ptrClientOut->Initialize expected to fail?
++    //   Same in InitRecording().
++    if (hr == S_OK) {
++      _playAudioFrameSize = Wfx.nBlockAlign;
++      // Block size is the number of samples each channel in 10ms.
++      _playBlockSize = Wfx.nSamplesPerSec / 100;
++      _playSampleRate = Wfx.nSamplesPerSec;
++      _devicePlaySampleRate =
++          Wfx.nSamplesPerSec;  // The device itself continues to run at 44.1
++                               // kHz.
++      _devicePlayBlockSize = Wfx.nSamplesPerSec / 100;
++      _playChannels = Wfx.nChannels;
++
++      RTC_LOG(LS_VERBOSE) << "VoE selected this rendering format:";
++      RTC_LOG(LS_VERBOSE) << "wFormatTag         : 0x"
++                          << webrtc::ToHex(Wfx.wFormatTag) << " ("
++                          << Wfx.wFormatTag << ")";
++      RTC_LOG(LS_VERBOSE) << "nChannels          : " << Wfx.nChannels;
++      RTC_LOG(LS_VERBOSE) << "nSamplesPerSec     : " << Wfx.nSamplesPerSec;
++      RTC_LOG(LS_VERBOSE) << "nAvgBytesPerSec    : " << Wfx.nAvgBytesPerSec;
++      RTC_LOG(LS_VERBOSE) << "nBlockAlign        : " << Wfx.nBlockAlign;
++      RTC_LOG(LS_VERBOSE) << "wBitsPerSample     : " << Wfx.wBitsPerSample;
++      RTC_LOG(LS_VERBOSE) << "cbSize             : " << Wfx.cbSize;
++      RTC_LOG(LS_VERBOSE) << "Additional settings:";
++      RTC_LOG(LS_VERBOSE) << "_playAudioFrameSize: " << _playAudioFrameSize;
++      RTC_LOG(LS_VERBOSE) << "_playBlockSize     : " << _playBlockSize;
++      RTC_LOG(LS_VERBOSE) << "_playChannels      : " << _playChannels;
++
++      // Create a rendering stream.
++      //
++      // ****************************************************************************
++      // For a shared-mode stream that uses event-driven buffering, the caller
++      // must set both hnsPeriodicity and hnsBufferDuration to 0. The Initialize
++      // method determines how large a buffer to allocate based on the
++      // scheduling period of the audio engine. Although the client's buffer
++      // processing thread is event driven, the basic buffer management process,
++      // as described previously, is unaltered. Each time the thread awakens, it
++      // should call IAudioClient::GetCurrentPadding to determine how much data
++      // to write to a rendering buffer or read from a capture buffer. In
++      // contrast to the two buffers that the Initialize method allocates for an
++      // exclusive-mode stream that uses event-driven buffering, a shared-mode
++      // stream requires a single buffer.
++      // ****************************************************************************
++      //
++      REFERENCE_TIME hnsBufferDuration =
++          0;  // ask for minimum buffer size (default)
++      if (_devicePlaySampleRate == 44100) {
++        // Ask for a larger buffer size (30ms) when using 44.1kHz as render
++        // rate. There seems to be a larger risk of underruns for 44.1 compared
++        // with the default rate (48kHz). When using default, we set the
++        // requested buffer duration to 0, which sets the buffer to the minimum
++        // size required by the engine thread. The actual buffer size can then
++        // be read by GetBufferSize() and it is 20ms on most machines.
++        hnsBufferDuration = 30 * 10000;
++      }
++      hr = _ptrClientOut->Initialize(
++          AUDCLNT_SHAREMODE_SHARED,           // share Audio Engine with other
++                                              // applications
++          AUDCLNT_STREAMFLAGS_EVENTCALLBACK,  // processing of the audio buffer
++                                              // by the client will be event
++                                              // driven
++          hnsBufferDuration,  // requested buffer capacity as a time value (in
++                              // 100-nanosecond units)
++          0,                  // periodicity
++          &Wfx,               // selected wave format
++          NULL);              // session GUID
+ 
+-  if (FAILED(hr)) {
+-    RTC_LOG(LS_ERROR) << "IAudioClient::Initialize() failed:";
++      if (FAILED(hr)) {
++        RTC_LOG(LS_ERROR) << "IAudioClient::Initialize() failed:";
++      }
++      EXIT_ON_ERROR(hr);
++    } else if (!initialized_with_mix) {
++      // Neither mix-format init nor PCM probe succeeded.
++      RTC_LOG(LS_ERROR) << "Failed to initialize playout client.";
++      goto Exit;
++    }
+   }
+-  EXIT_ON_ERROR(hr);
++  // (At this point the IAudioClient is initialized容ither with mix format or
++  // legacy PCM.)
+ 
+   if (_ptrAudioBuffer) {
+     // Update the audio buffer with the selected parameters
+@@ -2162,6 +2199,7 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
+ 
+   HRESULT hr = S_OK;
+   WAVEFORMATEX* pWfxIn = NULL;
++  bool initialized_with_mix = false;
+   WAVEFORMATEXTENSIBLE Wfx = WAVEFORMATEXTENSIBLE();
+   WAVEFORMATEX* pWfxClosestMatch = NULL;
+ 
+@@ -2193,95 +2231,134 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
+     RTC_LOG(LS_VERBOSE) << "cbSize         : " << pWfxIn->cbSize;
+   }
+ 
+-  // Set wave format
+-  Wfx.Format.wFormatTag = WAVE_FORMAT_EXTENSIBLE;
+-  Wfx.Format.wBitsPerSample = 16;
+-  Wfx.Format.cbSize = 22;
+-  Wfx.dwChannelMask = 0;
+-  Wfx.Samples.wValidBitsPerSample = Wfx.Format.wBitsPerSample;
+-  Wfx.SubFormat = KSDATAFORMAT_SUBTYPE_PCM;
+-
+-  const int freqs[6] = {48000, 44100, 16000, 96000, 32000, 8000};
+-  hr = S_FALSE;
+-
+-  // Iterate over frequencies and channels, in order of priority
+-  for (unsigned int freq = 0; freq < sizeof(freqs) / sizeof(freqs[0]); freq++) {
+-    for (unsigned int chan = 0;
+-         chan < sizeof(_recChannelsPrioList) / sizeof(_recChannelsPrioList[0]);
+-         chan++) {
+-      Wfx.Format.nChannels = _recChannelsPrioList[chan];
+-      Wfx.Format.nSamplesPerSec = freqs[freq];
+-      Wfx.Format.nBlockAlign =
+-          Wfx.Format.nChannels * Wfx.Format.wBitsPerSample / 8;
+-      Wfx.Format.nAvgBytesPerSec =
+-          Wfx.Format.nSamplesPerSec * Wfx.Format.nBlockAlign;
+-      // If the method succeeds and the audio endpoint device supports the
+-      // specified stream format, it returns S_OK. If the method succeeds and
+-      // provides a closest match to the specified format, it returns S_FALSE.
+-      hr = _ptrClientIn->IsFormatSupported(
+-          AUDCLNT_SHAREMODE_SHARED, (WAVEFORMATEX*)&Wfx, &pWfxClosestMatch);
+-      if (hr == S_OK) {
+-        break;
+-      } else {
+-        if (pWfxClosestMatch) {
+-          RTC_LOG(LS_INFO) << "nChannels=" << Wfx.Format.nChannels
+-                           << ", nSamplesPerSec=" << Wfx.Format.nSamplesPerSec
+-                           << " is not supported. Closest match: "
+-                              "nChannels="
+-                           << pWfxClosestMatch->nChannels << ", nSamplesPerSec="
+-                           << pWfxClosestMatch->nSamplesPerSec;
+-          CoTaskMemFree(pWfxClosestMatch);
+-          pWfxClosestMatch = NULL;
++  // -------- Try initializing with the engine's mix format first
++  // (roxanneskelly) --------
++  if (pWfxIn) {
++    REFERENCE_TIME hnsBufferDuration = 0;
++    if (pWfxIn->nSamplesPerSec == 44100) {
++      // Retain the larger-buffer workaround for 44.1 kHz.
++      hnsBufferDuration = 30 * 10000;  // 30 ms
++    }
++    hr = _ptrClientOut->Initialize(AUDCLNT_SHAREMODE_SHARED,
++                                   AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
++                                   hnsBufferDuration, 0, pWfxIn, NULL);
++    if (SUCCEEDED(hr)) {
++      _playAudioFrameSize = pWfxIn->nBlockAlign;
++      _playBlockSize = pWfxIn->nSamplesPerSec / 100;  // 10 ms
++      _playSampleRate = pWfxIn->nSamplesPerSec;
++      _devicePlaySampleRate = pWfxIn->nSamplesPerSec;
++      _devicePlayBlockSize = pWfxIn->nSamplesPerSec / 100;
++      _playChannels = pWfxIn->nChannels;
++      initialized_with_mix = true;
++    } else {
++      RTC_LOG(LS_WARNING) << "Initialize(shared, mix format) failed; will "
++                             "fall back to legacy PCM probe.";
++    }
++  }
++
++  if (!initialized_with_mix) {
++    // Set wave format
++    Wfx.Format.wFormatTag = WAVE_FORMAT_EXTENSIBLE;
++    Wfx.Format.wBitsPerSample = 16;
++    Wfx.Format.cbSize = 22;
++    Wfx.dwChannelMask = 0;
++    Wfx.Samples.wValidBitsPerSample = Wfx.Format.wBitsPerSample;
++    Wfx.SubFormat = KSDATAFORMAT_SUBTYPE_PCM;
++
++    const int freqs[6] = {48000, 44100, 16000, 96000, 32000, 8000};
++    hr = S_FALSE;
++
++    // Iterate over frequencies and channels, in order of priority
++    for (unsigned int freq = 0; freq < sizeof(freqs) / sizeof(freqs[0]);
++         freq++) {
++      for (unsigned int chan = 0; chan < sizeof(_recChannelsPrioList) /
++                                             sizeof(_recChannelsPrioList[0]);
++           chan++) {
++        Wfx.Format.nChannels = _recChannelsPrioList[chan];
++        Wfx.Format.nSamplesPerSec = freqs[freq];
++        Wfx.Format.nBlockAlign =
++            Wfx.Format.nChannels * Wfx.Format.wBitsPerSample / 8;
++        Wfx.Format.nAvgBytesPerSec =
++            Wfx.Format.nSamplesPerSec * Wfx.Format.nBlockAlign;
++        // If the method succeeds and the audio endpoint device supports the
++        // specified stream format, it returns S_OK. If the method succeeds and
++        // provides a closest match to the specified format, it returns S_FALSE.
++        hr = _ptrClientIn->IsFormatSupported(
++            AUDCLNT_SHAREMODE_SHARED, (WAVEFORMATEX*)&Wfx, &pWfxClosestMatch);
++        if (hr == S_OK) {
++          break;
+         } else {
+-          RTC_LOG(LS_INFO) << "nChannels=" << Wfx.Format.nChannels
+-                           << ", nSamplesPerSec=" << Wfx.Format.nSamplesPerSec
+-                           << " is not supported. No closest match.";
++          if (pWfxClosestMatch) {
++            RTC_LOG(LS_INFO)
++                << "nChannels=" << Wfx.Format.nChannels
++                << ", nSamplesPerSec=" << Wfx.Format.nSamplesPerSec
++                << " is not supported. Closest match: "
++                   "nChannels="
++                << pWfxClosestMatch->nChannels
++                << ", nSamplesPerSec=" << pWfxClosestMatch->nSamplesPerSec;
++            CoTaskMemFree(pWfxClosestMatch);
++            pWfxClosestMatch = NULL;
++          } else {
++            RTC_LOG(LS_INFO) << "nChannels=" << Wfx.Format.nChannels
++                             << ", nSamplesPerSec=" << Wfx.Format.nSamplesPerSec
++                             << " is not supported. No closest match.";
++          }
+         }
+       }
++      if (hr == S_OK)
++        break;
+     }
+-    if (hr == S_OK)
+-      break;
+-  }
+ 
+-  if (hr == S_OK) {
+-    _recAudioFrameSize = Wfx.Format.nBlockAlign;
+-    _recSampleRate = Wfx.Format.nSamplesPerSec;
+-    _recBlockSize = Wfx.Format.nSamplesPerSec / 100;
+-    _recChannels = Wfx.Format.nChannels;
+-
+-    RTC_LOG(LS_VERBOSE) << "VoE selected this capturing format:";
+-    RTC_LOG(LS_VERBOSE) << "wFormatTag        : 0x"
+-                        << webrtc::ToHex(Wfx.Format.wFormatTag) << " ("
+-                        << Wfx.Format.wFormatTag << ")";
+-    RTC_LOG(LS_VERBOSE) << "nChannels         : " << Wfx.Format.nChannels;
+-    RTC_LOG(LS_VERBOSE) << "nSamplesPerSec    : " << Wfx.Format.nSamplesPerSec;
+-    RTC_LOG(LS_VERBOSE) << "nAvgBytesPerSec   : " << Wfx.Format.nAvgBytesPerSec;
+-    RTC_LOG(LS_VERBOSE) << "nBlockAlign       : " << Wfx.Format.nBlockAlign;
+-    RTC_LOG(LS_VERBOSE) << "wBitsPerSample    : " << Wfx.Format.wBitsPerSample;
+-    RTC_LOG(LS_VERBOSE) << "cbSize            : " << Wfx.Format.cbSize;
+-    RTC_LOG(LS_VERBOSE) << "Additional settings:";
+-    RTC_LOG(LS_VERBOSE) << "_recAudioFrameSize: " << _recAudioFrameSize;
+-    RTC_LOG(LS_VERBOSE) << "_recBlockSize     : " << _recBlockSize;
+-    RTC_LOG(LS_VERBOSE) << "_recChannels      : " << _recChannels;
+-  }
+-
+-  // Create a capturing stream.
+-  hr = _ptrClientIn->Initialize(
+-      AUDCLNT_SHAREMODE_SHARED,  // share Audio Engine with other applications
+-      AUDCLNT_STREAMFLAGS_EVENTCALLBACK |  // processing of the audio buffer by
+-                                           // the client will be event driven
+-          AUDCLNT_STREAMFLAGS_NOPERSIST,   // volume and mute settings for an
+-                                           // audio session will not persist
+-                                           // across system restarts
+-      0,                    // required for event-driven shared mode
+-      0,                    // periodicity
+-      (WAVEFORMATEX*)&Wfx,  // selected wave format
+-      NULL);                // session GUID
+-
+-  if (hr != S_OK) {
+-    RTC_LOG(LS_ERROR) << "IAudioClient::Initialize() failed:";
++    if (hr == S_OK) {
++      _recAudioFrameSize = Wfx.Format.nBlockAlign;
++      _recSampleRate = Wfx.Format.nSamplesPerSec;
++      _recBlockSize = Wfx.Format.nSamplesPerSec / 100;
++      _recChannels = Wfx.Format.nChannels;
++
++      RTC_LOG(LS_VERBOSE) << "VoE selected this capturing format:";
++      RTC_LOG(LS_VERBOSE) << "wFormatTag        : 0x"
++                          << webrtc::ToHex(Wfx.Format.wFormatTag) << " ("
++                          << Wfx.Format.wFormatTag << ")";
++      RTC_LOG(LS_VERBOSE) << "nChannels         : " << Wfx.Format.nChannels;
++      RTC_LOG(LS_VERBOSE) << "nSamplesPerSec    : "
++                          << Wfx.Format.nSamplesPerSec;
++      RTC_LOG(LS_VERBOSE) << "nAvgBytesPerSec   : "
++                          << Wfx.Format.nAvgBytesPerSec;
++      RTC_LOG(LS_VERBOSE) << "nBlockAlign       : " << Wfx.Format.nBlockAlign;
++      RTC_LOG(LS_VERBOSE) << "wBitsPerSample    : "
++                          << Wfx.Format.wBitsPerSample;
++      RTC_LOG(LS_VERBOSE) << "cbSize            : " << Wfx.Format.cbSize;
++      RTC_LOG(LS_VERBOSE) << "Additional settings:";
++      RTC_LOG(LS_VERBOSE) << "_recAudioFrameSize: " << _recAudioFrameSize;
++      RTC_LOG(LS_VERBOSE) << "_recBlockSize     : " << _recBlockSize;
++      RTC_LOG(LS_VERBOSE) << "_recChannels      : " << _recChannels;
++
++      // Create a capturing stream.
++      hr = _ptrClientIn->Initialize(
++          AUDCLNT_SHAREMODE_SHARED,            // share Audio Engine with other
++                                               // applications
++          AUDCLNT_STREAMFLAGS_EVENTCALLBACK |  // processing of the audio buffer
++                                               // by the client will be event
++                                               // driven
++              AUDCLNT_STREAMFLAGS_NOPERSIST,  // volume and mute settings for an
++                                              // audio session will not persist
++                                              // across system restarts
++          0,                    // required for event-driven shared mode
++          0,                    // periodicity
++          (WAVEFORMATEX*)&Wfx,  // selected wave format
++          NULL);                // session GUID
++
++      if (hr != S_OK) {
++        RTC_LOG(LS_ERROR) << "IAudioClient::Initialize() failed:";
++      }
++      EXIT_ON_ERROR(hr);
++    } else if (!initialized_with_mix) {
++      RTC_LOG(LS_ERROR) << "Failed to initialize capture client.";
++      goto Exit;
++    }
+   }
+-  EXIT_ON_ERROR(hr);
++  // (At this point the IAudioClient is initialized容ither with mix format or
++  // legacy PCM.)
+ 
+   if (_ptrAudioBuffer) {
+     // Update the audio buffer with the selected parameters
