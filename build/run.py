@@ -222,7 +222,6 @@ PATCHES = {
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
         'crash_on_fatal_error.patch',
-        'Revert-mac-Work-around-an-inccorect-availability-ann.patch',
         'airpod_fixes.patch',
     ],
     'macos_arm64': [
@@ -233,7 +232,6 @@ PATCHES = {
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
         'crash_on_fatal_error.patch',
-        'Revert-mac-Work-around-an-inccorect-availability-ann.patch',
         'airpod_fixes.patch',
     ],
     'ios': [
