@@ -16,7 +16,7 @@ jobs:
           - windows_x86_64
           # - windows_arm64
           # - windows_x86
-    runs-on: windows-2022
+    runs-on: windows-latest
     outputs:
       output-artifact-id: ${{ steps.artifact-upload-step.outputs.artifact-id }}
     steps:
@@ -142,7 +142,7 @@ jobs:
   package-windows:
     needs:
     - build-windows 
-    runs-on: windows-2022 
+    runs-on: windows-latest
     steps:
     - uses: secondlife/action-autobuild@v3
       with:
