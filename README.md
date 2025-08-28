@@ -40,7 +40,7 @@ From the root directory of the 3p-webrtc-build, run the following script:
 This will build the Ubuntu 22.04 version of the WebRTC libraries and package
 them as an autobuild package.  The autobuild package will be created in
 the root directory, and will resemble something like:
-```webrtc-m114_release.242741945-linux64-242741945.tar.bz2```
+```webrtc-m137_release.242741945-linux64-242741945.tar.bz2```
 
 ### Mac
 
@@ -55,7 +55,7 @@ them as an autobuild package.  The autobuild package will be created in
 the root directory, and will resemble something like:
 
 ```
-webrtc-m114_release.242741945-darwin64-242741945.tar.bz2
+webrtc-m137_release.242741945-darwin64-242741945.tar.bz2
 ```
 
 ### Windows
@@ -71,7 +71,7 @@ them as an autobuild package.  The autobuild package will be created in
 the root directory, and will resemble something like:
 
 ```
-webrtc-m114_release.242741945-windows64-242741945.tar.bz2
+webrtc-m137_release.242741945-windows64-242741945.tar.bz2
 ```
 
 ## Installing In Viewer Builds
@@ -93,7 +93,7 @@ autobuild install -c <configuration> -A64 --local <path-to-webrtc-autobuild-pack
 where the path is in the form for paths used by your shell, such as:
 
 ```
-autobuild install -c RelWithDebInfoOS -A64 --local /c/Users/user/git/3p-webrtc-build/webrtc-m114_release.242752326-windows64-242752326.tar.bz2 webrtc
+autobuild install -c RelWithDebInfoOS -A64 --local /c/Users/user/git/3p-webrtc-build/webrtc-m137_release.242752326-windows64-242752326.tar.bz2 webrtc
 ```
 
 If you get an error such as:
@@ -125,7 +125,7 @@ autobuild install -c <configuration> -A64 --local <path-to-webrtc-autobuild-pack
 where the path is in the form for paths used by your shell, such as:
 
 ```
-autobuild install -c RelWithDebInfoOS -A64 --local /c/Users/user/git/3p-webrtc-build/webrtc-m114_release.242752326-darwin64-242752326.tar.bz2 webrtc
+autobuild install -c RelWithDebInfoOS -A64 --local /c/Users/user/git/3p-webrtc-build/webrtc-m137_release.242752326-darwin64-242752326.tar.bz2 webrtc
 ```
 
 ### Linux
@@ -145,7 +145,7 @@ autobuild install -c <configuration> -A64 --local <path-to-webrtc-autobuild-pack
 where the path is in the form for paths used by your shell, such as:
 
 ```
-autobuild install -c RelWithDebInfoOS -A64 --local /c/Users/user/git/3p-webrtc-build/webrtc-m114_release.242752326-linux64-242752326.tar.bz2 webrtc
+autobuild install -c RelWithDebInfoOS -A64 --local /c/Users/user/git/3p-webrtc-build/webrtc-m137_release.242752326-linux64-242752326.tar.bz2 webrtc
 ```
 
 ## Debugging WebRTC
@@ -180,7 +180,7 @@ repository to a convenient place:
 
 ```
 git clone git@github.com:webrtc-sdk/webrtc.git
-get checkout m114_release
+get checkout m137_release
 ```
 
 Apply the following patches in order as follows, from the root of the

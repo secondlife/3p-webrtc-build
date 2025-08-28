@@ -1,5 +1,5 @@
 diff --git a/rtc_base/checks.cc b/rtc_base/checks.cc
-index e732a2659d..606dd76bfe 100644
+index 6fa0514c36..f727925eac 100644
 --- a/rtc_base/checks.cc
 +++ b/rtc_base/checks.cc
 @@ -16,6 +16,7 @@
@@ -38,7 +38,7 @@ index e732a2659d..606dd76bfe 100644
 +  RTC_LOG(LS_ERROR) << output_str << "\n";
  #if defined(WEBRTC_WIN)
 -  DebugBreak();
-+//  DebugBreak();
++  // DebugBreak();
  #endif
 -  abort();
 +  // force a crash so that the crash logger can capture the exception.
@@ -48,11 +48,11 @@ index e732a2659d..606dd76bfe 100644
 +  while (true)
 +  {
 +#if defined(WEBRTC_WIN)
-+    _sleep(1);
++    Sleep(1);
 +#else
 +    usleep(1);
 +#endif
 +  }
  }
  
- RTC_NORETURN void WriteFatalLog(const char* file,
+ RTC_NORETURN void WriteFatalLog(const char* /* file */,

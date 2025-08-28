@@ -51,7 +51,7 @@ case "$AUTOBUILD_PLATFORM" in
 esac
 
 pushd "$build"
-bash ./build."$build_type".sh m114_release
+bash ./build."$build_type".sh m137_release
 
 source_environment_tempfile="$stage/source_environment.sh"
 autobuild source_environment > "$source_environment_tempfile"
@@ -73,7 +73,7 @@ mkdir LICENSES
 mv NOTICE LICENSES/webrtc-license.txt
 
 build=${AUTOBUILD_BUILD_ID:=0}
-echo "m114_release.${build}" > "$stage/VERSION.txt"
-echo "m114_release.${build}" > "$top/VERSION.txt"
+echo "m137_release.${build}" > "$stage/VERSION.txt"
+echo "m137_release.${build}" > "$top/VERSION.txt"
 popd
 popd
