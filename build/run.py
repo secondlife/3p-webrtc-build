@@ -135,6 +135,7 @@ def read_version_file(path: str) -> Dict[str, str]:
     for line in lines:
         line = line.strip()
 
+        logging.info(f'VERSION: {line}')
         # コメント行
         # Comment line
         if line[:1] == '#':
