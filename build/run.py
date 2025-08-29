@@ -889,12 +889,12 @@ def copy_headers(webrtc_src_dir, webrtc_package_dir, target):
         # robocopy's return code is special, so set `check=false` and handle it separately.
         # https://docs.microsoft.com/ja-jp/troubleshoot/windows-server/backup-and-storage/return-codes-used-robocopy-utility
         r = cmd(['robocopy', webrtc_src_dir, os.path.join(webrtc_package_dir, 'include'),
-                '*.h', '*.hpp', '/S', '/NP', '/NFL', '/NDL'], check=False)
+                 '*.h', '*.hpp', '*.inc', '/S', '/NP', '/NFL', '/NDL'], check=False)
         if r.returncode >= 4:
             raise Exception('robocopy failed')
     else:
         mkdir_p(os.path.join(webrtc_package_dir, 'include'))
-        cmd(['rsync', '-amv', '--include=*/', '--include=*.h', '--include=*.hpp', '--exclude=*',
+        cmd(['rsync', '-amv', '--include=*/', '--include=*.h', '--include=*.hpp', '--include=*.inc', '--exclude=*',
             os.path.join(webrtc_src_dir, '.'), os.path.join(webrtc_package_dir, 'include', '.')])
 
 
