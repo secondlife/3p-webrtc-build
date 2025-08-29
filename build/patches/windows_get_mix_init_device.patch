@@ -337,7 +337,7 @@ index f1cc0474fc..f29f8590b7 100644
 +      // Retain the larger-buffer workaround for 44.1 kHz.
 +      hnsBufferDuration = 30 * 10000;  // 30 ms
 +    }
-+    hr = _ptrClientOut->Initialize(AUDCLNT_SHAREMODE_SHARED,
++    hr = _ptrClientIn->Initialize(AUDCLNT_SHAREMODE_SHARED,
 +                                   AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
 +                                   hnsBufferDuration, 0, pWfxIn, NULL);
 +    if (SUCCEEDED(hr)) {
