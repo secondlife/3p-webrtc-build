@@ -1,0 +1,22 @@
+diff --git a/modules/audio_device/win/audio_device_core_win.cc b/modules/audio_device/win/audio_device_core_win.cc
+index f1cc0474fc..34eeaacc39 100644
+--- a/modules/audio_device/win/audio_device_core_win.cc
++++ b/modules/audio_device/win/audio_device_core_win.cc
+@@ -1881,7 +1881,7 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
+   Wfx.wBitsPerSample = 16;
+   Wfx.cbSize = 0;
+ 
+-  const int freqs[] = {48000, 44100, 16000, 96000, 32000, 8000};
++  const int freqs[] = {48000, 44100, 16000, 96000, 32000, 8000, 192000};
+   hr = S_FALSE;
+ 
+   // Iterate over frequencies and channels, in order of priority
+@@ -2201,7 +2201,7 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
+   Wfx.Samples.wValidBitsPerSample = Wfx.Format.wBitsPerSample;
+   Wfx.SubFormat = KSDATAFORMAT_SUBTYPE_PCM;
+ 
+-  const int freqs[6] = {48000, 44100, 16000, 96000, 32000, 8000};
++  const int freqs[] = {48000, 44100, 16000, 96000, 32000, 8000, 192000};
+   hr = S_FALSE;
+ 
+   // Iterate over frequencies and channels, in order of priority
