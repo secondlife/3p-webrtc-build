@@ -160,14 +160,25 @@ def enum_all_files(dir, dir2):
             yield os.path.relpath(os.path.join(root, file), dir2)
 
 
-def get_depot_tools(source_dir, fetch=False):
+def get_depot_tools(source_dir, fetch=False, date=''):
     dir = os.path.join(source_dir, 'depot_tools')
     if os.path.exists(dir):
         if fetch:
-            cmd(['git', 'fetch'])
-            cmd(['git', 'checkout', '-f', 'origin/HEAD'])
+            cmd(['git', 'fetch'], cwd=dir)
+            if date != '':
+                before = '--before="' + date + '"'
+                commit = cmdcap(['git', 'rev-list', '--all', '--max-count=1', before], cwd=dir)
+                cmd(['git', 'checkout', '-f', commit], cwd=dir)
+                cmd(['python3', os.path.join(dir, 'update_depot_tools_toggle.py'), '--disable'], cwd=dir)
+            else:
+                cmd(['git', 'checkout', '-f', 'origin/HEAD'], cwd=dir)
     else:
         cmd(['git', 'clone', 'https://chromium.googlesource.com/chromium/tools/depot_tools.git', dir])
+        if date != '':
+            before = '--before="' + date + '"'
+            commit = cmdcap(['git', 'rev-list', '--all', '--max-count=1', before], cwd=dir)
+            cmd(['git', 'checkout', '-f', commit], cwd=dir)
+            cmd(['python3', os.path.join(dir, 'update_depot_tools_toggle.py'), '--disable'], cwd=dir)
     return dir
 
 
@@ -284,6 +295,8 @@ PATCHES = {
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
         'crash_on_fatal_error.patch',
+        'disable_crel.patch',
+        'gcc_fpermissive_error.patch',
     ],
     'ubuntu-18.04_armv8': [
         'add_license_dav1d.patch',
@@ -292,6 +305,8 @@ PATCHES = {
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
         'crash_on_fatal_error.patch',
+        'disable_crel.patch',
+        'gcc_fpermissive_error.patch',
     ],
     'ubuntu-20.04_armv8': [
         'add_license_dav1d.patch',
@@ -300,6 +315,8 @@ PATCHES = {
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
         'crash_on_fatal_error.patch',
+        'disable_crel.patch',
+        'gcc_fpermissive_error.patch',
     ],
     'ubuntu-18.04_x86_64': [
         'add_license_dav1d.patch',
@@ -308,6 +325,8 @@ PATCHES = {
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
         'crash_on_fatal_error.patch',
+        'disable_crel.patch',
+        'gcc_fpermissive_error.patch',
     ],
     'ubuntu-20.04_x86_64': [
         'add_license_dav1d.patch',
@@ -316,6 +335,8 @@ PATCHES = {
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
         'crash_on_fatal_error.patch',
+        'disable_crel.patch',
+        'gcc_fpermissive_error.patch',
     ],
     'ubuntu-22.04_x86_64': [
         'add_license_dav1d.patch',
@@ -324,6 +345,8 @@ PATCHES = {
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
         'crash_on_fatal_error.patch',
+        'disable_crel.patch',
+        'gcc_fpermissive_error.patch',
     ],
 }
 
@@ -351,7 +374,6 @@ def get_webrtc(source_dir, patch_dir, version, target,
 
     if not os.path.exists(os.path.join(webrtc_source_dir, 'src')):
         with cd(webrtc_source_dir):
-            cmd(['gclient'])
             shutil.copyfile(os.path.join(BASE_DIR, '.gclient'), '.gclient')
             cmd(['git', 'clone', 'https://github.com/webrtc-sdk/webrtc.git', 'src'])
             if target in ['android', 'android_prefixed']:
@@ -379,6 +401,10 @@ def get_webrtc(source_dir, patch_dir, version, target,
                 depth, dirs = PATCH_INFO.get(patch, (1, ['.']))
                 dir = os.path.join(src_dir, *dirs)
                 apply_patch(os.path.join(patch_dir, patch), dir, depth)
+            try:
+                cmd(['ensure_bootstrap'])
+            except:
+                print('Ignore any failure to complete ensure_bootstrap, please (it is just used to import a Python3 venv)')
 
 
 def git_get_url_and_revision(dir):
@@ -392,6 +418,7 @@ VersionInfo = collections.namedtuple('VersionInfo', [
     'webrtc_version',
     'webrtc_commit',
     'webrtc_build_version',
+    'webrtc_last_commit_date',
 ])
 
 
@@ -401,7 +428,11 @@ def archive_objects(ar, dir, output):
         files = cmdcap(['find', '.', '-name', '*.o', '-not', '-path', './third_party/nasm/*']).splitlines()
         print(files)
         rm_rf(output)
-        cmd([ar, '-rcs', output, *files])
+        cmd([ar, '--format=gnu', '-rcs', output, *files])
+        # Create a sorted index of the *native object modules* for the library,
+        # which is unlike 'llvm-ar s' and is needed to link it against shared
+        # libraries with most linkers. HB
+        cmd(['ranlib', output])
 
 
 MultistrapConfig = collections.namedtuple('MultistrapConfig', [
@@ -419,21 +450,6 @@ MULTISTRAP_CONFIGS = {
         config_file=['raspberry-pi-os_armv7', 'rpi-raspbian.conf'],
         arch='armhf',
         triplet='arm-linux-gnueabihf'
-    ),
-    'raspberry-pi-os_armv8': MultistrapConfig(
-        config_file=['raspberry-pi-os_armv8', 'rpi-raspbian.conf'],
-        arch='arm64',
-        triplet='aarch64-linux-gnu'
-    ),
-    'ubuntu-18.04_armv8': MultistrapConfig(
-        config_file=['ubuntu-18.04_armv8', 'arm64.conf'],
-        arch='arm64',
-        triplet='aarch64-linux-gnu'
-    ),
-    'ubuntu-20.04_armv8': MultistrapConfig(
-        config_file=['ubuntu-20.04_armv8', 'arm64.conf'],
-        arch='arm64',
-        triplet='aarch64-linux-gnu'
     ),
 }
 
@@ -466,13 +482,14 @@ def init_rootfs(sysroot: str, config: MultistrapConfig, force=False):
 
 
 COMMON_GN_ARGS = [
-    "rtc_use_h264=false",
-    "is_component_build=false",
+    'rtc_use_h264=false',
+    'is_component_build=false',
     'rtc_build_examples=false',
-    "use_rtti=true",
+    'use_rtti=true',
+    'use_thin_lto=false',
     'rtc_build_tools=false',
-    "rtc_enable_protobuf=false",
-    "treat_warnings_as_errors=false",
+    'rtc_enable_protobuf=false',
+    'treat_warnings_as_errors=false',
 ]
 
 WEBRTC_BUILD_TARGETS_MACOS_COMMON = [
@@ -494,8 +511,11 @@ WEBRTC_BUILD_TARGETS = {
 
 def get_build_targets(target):
     ts = [':default']
-    if target not in ('windows_x86_64', 'windows_x86', 'windows_arm64', 'ios', 'macos_x86_64', 'macos_arm64', 'ubuntu-18.04_x86_64', 'ubuntu-20.04_x86_64', 'ubuntu-22.04_x86_64'):
-        ts += ['buildtools/third_party/libc++']
+    # Linux arm targets shall also be excluded, and since even macOS targets
+    # are excluded below (strange: the viewer is compiled against libc++ under
+    # macOS...), then no target needs libc++ !  HB
+    #if target not in ('windows_x86_64', 'windows_x86', 'windows_arm64', 'ios', 'macos_x86_64', 'macos_arm64', 'ubuntu-18.04_x86_64', 'ubuntu-20.04_x86_64', 'ubuntu-22.04_x86_64'):
+    #    ts += ['buildtools/third_party/libc++']
     ts += WEBRTC_BUILD_TARGETS.get(target, [])
     return ts
 
@@ -771,15 +791,11 @@ def build_webrtc(
                 'use_lld=false',
             ]
         elif target in ('raspberry-pi-os_armv6',
-                        'raspberry-pi-os_armv7',
-                        'raspberry-pi-os_armv8',
-                        'ubuntu-18.04_armv8',
-                        'ubuntu-20.04_armv8'):
+                        'raspberry-pi-os_armv7'):
             sysroot = os.path.join(source_dir, 'rootfs')
-            arm64_set = ("raspberry-pi-os_armv8", "ubuntu-18.04_armv8", "ubuntu-20.04_armv8")
             gn_args += [
                 'target_os="linux"',
-                f'target_cpu="{"arm64" if target in arm64_set else "arm"}"',
+                'target_cpu="arm"',
                 f'target_sysroot="{sysroot}"',
                 'rtc_use_pipewire=false',
             ]
@@ -793,12 +809,32 @@ def build_webrtc(
                     'arm_use_neon=false',
                     'enable_libaom=false',
                 ]
+        elif target in ('raspberry-pi-os_armv8',
+                        'ubuntu-18.04_armv8',
+                        'ubuntu-20.04_armv8'):
+            gn_args += [
+                'host_os="linux"',
+                'target_os="linux"',
+                'host_cpu="arm64"',
+                'target_cpu="arm64"',
+                'use_custom_libcxx=false',
+                'use_custom_libcxx_for_host=false',
+                'clang_use_chrome_plugins=false',
+                'rtc_use_x11=false',
+                'rtc_use_pipewire=false',
+                'rtc_include_pulse_audio=false',
+                'rtc_include_internal_audio_device=true',
+            ]
         elif target in ('ubuntu-18.04_x86_64', 'ubuntu-20.04_x86_64', 'ubuntu-22.04_x86_64'):
             gn_args += [
+                'host_os="linux"',
                 'target_os="linux"',
+                'target_cpu="x64"',
+                'use_custom_libcxx=false',
+                'use_custom_libcxx_for_host=false',
+                'clang_use_chrome_plugins=false',
+                'rtc_use_x11=false',
                 'rtc_use_pipewire=false',
-                "use_custom_libcxx=false",
-                "use_custom_libcxx_for_host=false",
                 'rtc_include_pulse_audio=false',
                 'rtc_include_internal_audio_device=true',
             ]
@@ -1152,8 +1188,11 @@ def main():
     if not hasattr(args, 'op'):
         parser.error('Required subcommand')
 
-    if not check_target(args.target):
-        raise Exception(f'Target {args.target} is not supported on your platform')
+    # Do not error out when the Linux distribution used to build the library is
+    # not known from the build system: we do not care since we use a virtual
+    # environment for the build... HB
+    #if not check_target(args.target):
+    #    raise Exception(f'Target {args.target} is not supported on your platform')
 
     configuration = 'debug' if args.debug else 'release'
 
@@ -1199,7 +1238,8 @@ def main():
     version_info = VersionInfo(
         webrtc_version=version_file['WEBRTC_VERSION'],
         webrtc_commit=version_file['WEBRTC_COMMIT'],
-        webrtc_build_version=version_file['WEBRTC_BUILD_VERSION'])
+        webrtc_build_version=version_file['WEBRTC_BUILD_VERSION'],
+        webrtc_last_commit_date=version_file['WEBRTC_LAST_COMMIT_DATE'])
 
     if args.op == 'build':
         mkdir_p(source_dir)
@@ -1210,7 +1250,7 @@ def main():
                 sysroot = os.path.join(source_dir, 'rootfs')
                 init_rootfs(sysroot, MULTISTRAP_CONFIGS[args.target], args.rootfs_fetch_force)
 
-            dir = get_depot_tools(source_dir, fetch=args.depottools_fetch)
+            dir = get_depot_tools(source_dir, fetch=args.depottools_fetch, date=version_info.webrtc_last_commit_date)
             add_path(dir)
             if args.target in ['windows_x86_64', 'windows_x86', 'windows_arm64']:
                 cmd(['git', 'config', '--global', 'core.longpaths', 'true'])
