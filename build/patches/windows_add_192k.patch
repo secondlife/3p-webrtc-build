@@ -1,39 +1,76 @@
 diff --git a/modules/audio_device/win/audio_device_core_win.cc b/modules/audio_device/win/audio_device_core_win.cc
-index f1cc0474fc..ffb0b159b1 100644
+index f1cc0474fc..f8e4f25bb9 100644
 --- a/modules/audio_device/win/audio_device_core_win.cc
 +++ b/modules/audio_device/win/audio_device_core_win.cc
-@@ -1846,7 +1846,7 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
+@@ -1845,8 +1845,8 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
+ 
    HRESULT hr = S_OK;
    WAVEFORMATEX* pWfxOut = NULL;
-   WAVEFORMATEX Wfx = WAVEFORMATEX();
+-  WAVEFORMATEX Wfx = WAVEFORMATEX();
 -  WAVEFORMATEX* pWfxClosestMatch = NULL;
-+  WAVEFORMATEX* pInitWfxClosestMatch = NULL;
++  WAVEFORMATEXTENSIBLE Wfx = WAVEFORMATEXTENSIBLE();
++  WAVEFORMATEXTENSIBLE* pInitWfxClosestMatch = NULL;
  
    // Create COM object with IAudioClient interface.
    SAFE_RELEASE(_ptrClientOut);
-@@ -1881,7 +1881,7 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
-   Wfx.wBitsPerSample = 16;
-   Wfx.cbSize = 0;
+@@ -1877,11 +1877,14 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
+   }
+ 
+   // Set wave format
+-  Wfx.wFormatTag = WAVE_FORMAT_PCM;
+-  Wfx.wBitsPerSample = 16;
+-  Wfx.cbSize = 0;
++  Wfx.Format.wFormatTag = WAVE_FORMAT_EXTENSIBLE;
++  Wfx.Format.wBitsPerSample = 16;
++  Wfx.Format.cbSize = 22;
++  Wfx.dwChannelMask = 0;
++  Wfx.Samples.wValidBitsPerSample = Wfx.Format.wBitsPerSample;
++  Wfx.SubFormat = KSDATAFORMAT_SUBTYPE_PCM;
  
 -  const int freqs[] = {48000, 44100, 16000, 96000, 32000, 8000};
 +  const int freqs[] = {48000, 44100, 16000, 96000, 32000, 8000, 192000};
    hr = S_FALSE;
  
    // Iterate over frequencies and channels, in order of priority
-@@ -1896,6 +1896,7 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
+@@ -1889,30 +1892,38 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
+     for (unsigned int chan = 0; chan < sizeof(_playChannelsPrioList) /
+                                            sizeof(_playChannelsPrioList[0]);
+          chan++) {
+-      Wfx.nChannels = _playChannelsPrioList[chan];
+-      Wfx.nSamplesPerSec = freqs[freq];
+-      Wfx.nBlockAlign = Wfx.nChannels * Wfx.wBitsPerSample / 8;
+-      Wfx.nAvgBytesPerSec = Wfx.nSamplesPerSec * Wfx.nBlockAlign;
++      Wfx.Format.nChannels = _playChannelsPrioList[chan];
++      Wfx.Format.nSamplesPerSec = freqs[freq];
++      Wfx.Format.nBlockAlign =
++          Wfx.Format.nChannels * Wfx.Format.wBitsPerSample / 8;
++      Wfx.Format.nAvgBytesPerSec =
++          Wfx.Format.nSamplesPerSec * Wfx.Format.nBlockAlign;
        // If the method succeeds and the audio endpoint device supports the
        // specified stream format, it returns S_OK. If the method succeeds and
        // provides a closest match to the specified format, it returns S_FALSE.
-+      WAVEFORMATEX* pWfxClosestMatch = NULL;
-       hr = _ptrClientOut->IsFormatSupported(AUDCLNT_SHAREMODE_SHARED, &Wfx,
-                                             &pWfxClosestMatch);
+-      hr = _ptrClientOut->IsFormatSupported(AUDCLNT_SHAREMODE_SHARED, &Wfx,
+-                                            &pWfxClosestMatch);
++      WAVEFORMATEXTENSIBLE* pWfxClosestMatch = NULL;
++      hr = _ptrClientOut->IsFormatSupported(AUDCLNT_SHAREMODE_SHARED,
++                                           (WAVEFORMATEX*)&Wfx,
++                                           (WAVEFORMATEX**)&pWfxClosestMatch);
        if (hr == S_OK) {
-@@ -1908,8 +1909,12 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
+         break;
+       } else {
+         if (pWfxClosestMatch) {
+-          RTC_LOG(LS_INFO) << "nChannels=" << Wfx.nChannels
+-                           << ", nSamplesPerSec=" << Wfx.nSamplesPerSec
++          RTC_LOG(LS_INFO) << "nChannels=" << Wfx.Format.nChannels
++                           << ", nSamplesPerSec=" << Wfx.Format.nSamplesPerSec
+                            << " is not supported. Closest match: "
                                "nChannels="
-                            << pWfxClosestMatch->nChannels << ", nSamplesPerSec="
-                            << pWfxClosestMatch->nSamplesPerSec;
+-                           << pWfxClosestMatch->nChannels << ", nSamplesPerSec="
+-                           << pWfxClosestMatch->nSamplesPerSec;
 -          CoTaskMemFree(pWfxClosestMatch);
 -          pWfxClosestMatch = NULL;
++                           << pWfxClosestMatch->Format.nChannels << ", nSamplesPerSec="
++                           << pWfxClosestMatch->Format.nSamplesPerSec;
 +
 +          if (pInitWfxClosestMatch) {
 +            CoTaskMemFree(pWfxClosestMatch);
@@ -41,28 +78,88 @@ index f1cc0474fc..ffb0b159b1 100644
 +            pInitWfxClosestMatch = pWfxClosestMatch;
 +          }
          } else {
-           RTC_LOG(LS_INFO) << "nChannels=" << Wfx.nChannels
-                            << ", nSamplesPerSec=" << Wfx.nSamplesPerSec
-@@ -1924,6 +1929,18 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
+-          RTC_LOG(LS_INFO) << "nChannels=" << Wfx.nChannels
+-                           << ", nSamplesPerSec=" << Wfx.nSamplesPerSec
++          RTC_LOG(LS_INFO) << "nChannels=" << Wfx.Format.nChannels
++                           << ", nSamplesPerSec=" << Wfx.Format.nSamplesPerSec
+                            << " is not supported. No closest match.";
+         }
+       }
+@@ -1924,26 +1935,42 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
    // TODO(andrew): what happens in the event of failure in the above loop?
    //   Is _ptrClientOut->Initialize expected to fail?
    //   Same in InitRecording().
 +
 +  if (pInitWfxClosestMatch) {
 +    // Set up the closest match, and rely on the voice engine to resample. (roxanneskelly)
-+    Wfx.wFormatTag = WAVE_FORMAT_PCM;
-+    Wfx.wBitsPerSample = 16;
-+    Wfx.cbSize = 0;
-+    Wfx.nChannels = pInitWfxClosestMatch->nChannels;
-+    Wfx.nSamplesPerSec = pInitWfxClosestMatch->nSamplesPerSec;
-+    Wfx.nBlockAlign = pInitWfxClosestMatch->nBlockAlign;
-+    Wfx.nAvgBytesPerSec = pInitWfxClosestMatch->nAvgBytesPerSec;
++    CopyMemory(&Wfx, pInitWfxClosestMatch, sizeof(Wfx));
++    Wfx.SubFormat = KSDATAFORMAT_SUBTYPE_PCM;
++    Wfx.Format.wBitsPerSample = 16;  // force it to 16 bits per sample
++    Wfx.Samples.wValidBitsPerSample = Wfx.Format.wBitsPerSample;
++    Wfx.Format.nChannels = 2;
++    Wfx.Format.nBlockAlign =
++        Wfx.Format.nChannels * Wfx.Format.wBitsPerSample / 8;
++    Wfx.Format.nAvgBytesPerSec =
++        Wfx.Format.nSamplesPerSec * Wfx.Format.nBlockAlign;
 +    hr = S_OK;
 +  }
    if (hr == S_OK) {
-     _playAudioFrameSize = Wfx.nBlockAlign;
+-    _playAudioFrameSize = Wfx.nBlockAlign;
++    _playAudioFrameSize = Wfx.Format.nBlockAlign;
      // Block size is the number of samples each channel in 10ms.
-@@ -2031,7 +2048,7 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
+-    _playBlockSize = Wfx.nSamplesPerSec / 100;
+-    _playSampleRate = Wfx.nSamplesPerSec;
++    _playBlockSize = Wfx.Format.nSamplesPerSec / 100;
++    _playSampleRate = Wfx.Format.nSamplesPerSec;
+     _devicePlaySampleRate =
+-        Wfx.nSamplesPerSec;  // The device itself continues to run at 44.1 kHz.
+-    _devicePlayBlockSize = Wfx.nSamplesPerSec / 100;
+-    _playChannels = Wfx.nChannels;
++        Wfx.Format
++            .nSamplesPerSec;  // The device itself continues to run at 44.1 kHz.
++    _devicePlayBlockSize = Wfx.Format.nSamplesPerSec / 100;
++    _playChannels = Wfx.Format.nChannels;
+ 
+     RTC_LOG(LS_VERBOSE) << "VoE selected this rendering format:";
+     RTC_LOG(LS_VERBOSE) << "wFormatTag         : 0x"
+-                        << webrtc::ToHex(Wfx.wFormatTag) << " ("
+-                        << Wfx.wFormatTag << ")";
+-    RTC_LOG(LS_VERBOSE) << "nChannels          : " << Wfx.nChannels;
+-    RTC_LOG(LS_VERBOSE) << "nSamplesPerSec     : " << Wfx.nSamplesPerSec;
+-    RTC_LOG(LS_VERBOSE) << "nAvgBytesPerSec    : " << Wfx.nAvgBytesPerSec;
+-    RTC_LOG(LS_VERBOSE) << "nBlockAlign        : " << Wfx.nBlockAlign;
+-    RTC_LOG(LS_VERBOSE) << "wBitsPerSample     : " << Wfx.wBitsPerSample;
+-    RTC_LOG(LS_VERBOSE) << "cbSize             : " << Wfx.cbSize;
++                        << webrtc::ToHex(Wfx.Format.wFormatTag) << " ("
++                        << Wfx.Format.wFormatTag << ")";
++    RTC_LOG(LS_VERBOSE) << "nChannels          : " << Wfx.Format.nChannels;
++    RTC_LOG(LS_VERBOSE) << "nSamplesPerSec     : " << Wfx.Format.nSamplesPerSec;
++    RTC_LOG(LS_VERBOSE) << "nAvgBytesPerSec    : "
++                        << Wfx.Format.nAvgBytesPerSec;
++    RTC_LOG(LS_VERBOSE) << "nBlockAlign        : " << Wfx.Format.nBlockAlign;
++    RTC_LOG(LS_VERBOSE) << "wBitsPerSample     : " << Wfx.Format.wBitsPerSample;
++    RTC_LOG(LS_VERBOSE) << "cbSize             : " << Wfx.Format.cbSize;
+     RTC_LOG(LS_VERBOSE) << "Additional settings:";
+     RTC_LOG(LS_VERBOSE) << "_playAudioFrameSize: " << _playAudioFrameSize;
+     RTC_LOG(LS_VERBOSE) << "_playBlockSize     : " << _playBlockSize;
+@@ -1980,12 +2007,14 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
+   }
+   hr = _ptrClientOut->Initialize(
+       AUDCLNT_SHAREMODE_SHARED,  // share Audio Engine with other applications
+-      AUDCLNT_STREAMFLAGS_EVENTCALLBACK,  // processing of the audio buffer by
++      AUDCLNT_STREAMFLAGS_EVENTCALLBACK |  // processing of the audio buffer by
+                                           // the client will be event driven
++          AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM |
++          AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
+       hnsBufferDuration,  // requested buffer capacity as a time value (in
+                           // 100-nanosecond units)
+       0,                  // periodicity
+-      &Wfx,               // selected wave format
++      (WAVEFORMATEX *)&Wfx,               // selected wave format
+       NULL);              // session GUID
+ 
+   if (FAILED(hr)) {
+@@ -2031,7 +2060,7 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
    _playIsInitialized = true;
  
    CoTaskMemFree(pWfxOut);
@@ -71,7 +168,7 @@ index f1cc0474fc..ffb0b159b1 100644
  
    RTC_LOG(LS_VERBOSE) << "render side is now initialized";
    return 0;
-@@ -2039,7 +2056,7 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
+@@ -2039,7 +2068,7 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
  Exit:
    _TraceCOMError(hr);
    CoTaskMemFree(pWfxOut);
@@ -80,16 +177,16 @@ index f1cc0474fc..ffb0b159b1 100644
    SAFE_RELEASE(_ptrClientOut);
    SAFE_RELEASE(_ptrRenderClient);
    return -1;
-@@ -2163,7 +2180,7 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
+@@ -2163,7 +2192,7 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
    HRESULT hr = S_OK;
    WAVEFORMATEX* pWfxIn = NULL;
    WAVEFORMATEXTENSIBLE Wfx = WAVEFORMATEXTENSIBLE();
 -  WAVEFORMATEX* pWfxClosestMatch = NULL;
-+  WAVEFORMATEX* pInitWfxClosestMatch = NULL;
++  WAVEFORMATEXTENSIBLE* pInitWfxClosestMatch = NULL;
  
    // Create COM object with IAudioClient interface.
    SAFE_RELEASE(_ptrClientIn);
-@@ -2201,7 +2218,7 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
+@@ -2201,7 +2230,7 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
    Wfx.Samples.wValidBitsPerSample = Wfx.Format.wBitsPerSample;
    Wfx.SubFormat = KSDATAFORMAT_SUBTYPE_PCM;
  
@@ -98,20 +195,30 @@ index f1cc0474fc..ffb0b159b1 100644
    hr = S_FALSE;
  
    // Iterate over frequencies and channels, in order of priority
-@@ -2218,6 +2235,7 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
+@@ -2218,8 +2247,10 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
        // If the method succeeds and the audio endpoint device supports the
        // specified stream format, it returns S_OK. If the method succeeds and
        // provides a closest match to the specified format, it returns S_FALSE.
-+      WAVEFORMATEX* pWfxClosestMatch = NULL;
-       hr = _ptrClientIn->IsFormatSupported(
-           AUDCLNT_SHAREMODE_SHARED, (WAVEFORMATEX*)&Wfx, &pWfxClosestMatch);
+-      hr = _ptrClientIn->IsFormatSupported(
+-          AUDCLNT_SHAREMODE_SHARED, (WAVEFORMATEX*)&Wfx, &pWfxClosestMatch);
++      WAVEFORMATEXTENSIBLE* pWfxClosestMatch = NULL;
++      hr = _ptrClientIn->IsFormatSupported(AUDCLNT_SHAREMODE_SHARED,
++                                           (WAVEFORMATEX*)&Wfx,
++                                           (WAVEFORMATEX**)&pWfxClosestMatch);
        if (hr == S_OK) {
-@@ -2230,8 +2248,11 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
+         break;
+       } else {
+@@ -2228,10 +2259,14 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
+                            << ", nSamplesPerSec=" << Wfx.Format.nSamplesPerSec
+                            << " is not supported. Closest match: "
                                "nChannels="
-                            << pWfxClosestMatch->nChannels << ", nSamplesPerSec="
-                            << pWfxClosestMatch->nSamplesPerSec;
+-                           << pWfxClosestMatch->nChannels << ", nSamplesPerSec="
+-                           << pWfxClosestMatch->nSamplesPerSec;
 -          CoTaskMemFree(pWfxClosestMatch);
 -          pWfxClosestMatch = NULL;
++                           << pWfxClosestMatch->Format.nChannels
++                           << ", nSamplesPerSec="
++                           << pWfxClosestMatch->Format.nSamplesPerSec;
 +          if (pInitWfxClosestMatch) {
 +            CoTaskMemFree(pWfxClosestMatch);
 +          } else {
@@ -120,7 +227,7 @@ index f1cc0474fc..ffb0b159b1 100644
          } else {
            RTC_LOG(LS_INFO) << "nChannels=" << Wfx.Format.nChannels
                             << ", nSamplesPerSec=" << Wfx.Format.nSamplesPerSec
-@@ -2242,7 +2263,22 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
+@@ -2242,7 +2277,20 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
      if (hr == S_OK)
        break;
    }
@@ -128,23 +235,30 @@ index f1cc0474fc..ffb0b159b1 100644
 +  if (pInitWfxClosestMatch) {
 +    // Set up the closest match, and rely on the voice engine to resample.
 +    // (roxanneskelly)
-+    Wfx.Format.wFormatTag = WAVE_FORMAT_EXTENSIBLE;
-+    Wfx.Format.wBitsPerSample = 16;
-+    Wfx.Format.cbSize = 22;
-+    Wfx.dwChannelMask = 0;
-+    Wfx.Samples.wValidBitsPerSample = Wfx.Format.wBitsPerSample;
++    CopyMemory(&Wfx, pInitWfxClosestMatch, sizeof(Wfx));
 +    Wfx.SubFormat = KSDATAFORMAT_SUBTYPE_PCM;
-+
-+    Wfx.Format.nChannels = pInitWfxClosestMatch->nChannels;
-+    Wfx.Format.nSamplesPerSec = pInitWfxClosestMatch->nSamplesPerSec;
-+    Wfx.Format.nBlockAlign = pInitWfxClosestMatch->nBlockAlign;
-+    Wfx.Format.nAvgBytesPerSec = pInitWfxClosestMatch->nAvgBytesPerSec;
++    Wfx.Format.wBitsPerSample = 16;  // force it to 16 bits per sample
++    Wfx.Samples.wValidBitsPerSample = Wfx.Format.wBitsPerSample;
++    Wfx.Format.nChannels = 1;
++    Wfx.Format.nBlockAlign =
++        Wfx.Format.nChannels * Wfx.Format.wBitsPerSample / 8;
++    Wfx.Format.nAvgBytesPerSec =
++        Wfx.Format.nSamplesPerSec * Wfx.Format.nBlockAlign;
 +    hr = S_OK;
 +  }
    if (hr == S_OK) {
      _recAudioFrameSize = Wfx.Format.nBlockAlign;
      _recSampleRate = Wfx.Format.nSamplesPerSec;
-@@ -2321,7 +2357,7 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
+@@ -2270,6 +2318,8 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
+       AUDCLNT_SHAREMODE_SHARED,  // share Audio Engine with other applications
+       AUDCLNT_STREAMFLAGS_EVENTCALLBACK |  // processing of the audio buffer by
+                                            // the client will be event driven
++          AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM |
++          AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY |
+           AUDCLNT_STREAMFLAGS_NOPERSIST,   // volume and mute settings for an
+                                            // audio session will not persist
+                                            // across system restarts
+@@ -2321,7 +2371,7 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
    _recIsInitialized = true;
  
    CoTaskMemFree(pWfxIn);
@@ -153,7 +267,7 @@ index f1cc0474fc..ffb0b159b1 100644
  
    RTC_LOG(LS_VERBOSE) << "capture side is now initialized";
    return 0;
-@@ -2329,7 +2365,7 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
+@@ -2329,7 +2379,7 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
  Exit:
    _TraceCOMError(hr);
    CoTaskMemFree(pWfxIn);
