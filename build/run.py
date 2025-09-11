@@ -374,6 +374,8 @@ def get_webrtc(source_dir, patch_dir, version, target,
 
     if not os.path.exists(os.path.join(webrtc_source_dir, 'src')):
         with cd(webrtc_source_dir):
+            os.environ['DEPOT_TOOLS_UPDATE'] = "0"
+            cmd(['gclient'])
             shutil.copyfile(os.path.join(BASE_DIR, '.gclient'), '.gclient')
             cmd(['git', 'clone', 'https://github.com/webrtc-sdk/webrtc.git', 'src'])
             if target in ['android', 'android_prefixed']:
