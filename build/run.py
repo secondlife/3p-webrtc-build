@@ -374,8 +374,6 @@ def get_webrtc(source_dir, patch_dir, version, target,
 
     if not os.path.exists(os.path.join(webrtc_source_dir, 'src')):
         with cd(webrtc_source_dir):
-            os.environ['DEPOT_TOOLS_UPDATE'] = "0"
-            cmd(['gclient'])
             shutil.copyfile(os.path.join(BASE_DIR, '.gclient'), '.gclient')
             cmd(['git', 'clone', 'https://github.com/webrtc-sdk/webrtc.git', 'src'])
             if target in ['android', 'android_prefixed']:
@@ -398,7 +396,7 @@ def get_webrtc(source_dir, patch_dir, version, target,
                 cmd(['git', 'branch'])
                 cmd(['git', 'checkout', '-f', version])
             cmd(['git', 'clean', '-df'])
-            cmd(['gclient', 'sync', '-D', '--force', '--reset', '--with_branch_heads', '--jobs=8'])
+            cmd(['gclient', 'sync', '-D', '--force', '--reset', '--revision', version, '--with_branch_heads', '--jobs=8'])
             for patch in PATCHES[target]:
                 depth, dirs = PATCH_INFO.get(patch, (1, ['.']))
                 dir = os.path.join(src_dir, *dirs)
