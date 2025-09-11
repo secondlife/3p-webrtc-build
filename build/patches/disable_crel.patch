@@ -1,0 +1,17 @@
+diff -durN sdk/build/config/compiler/BUILD.gn sdk-patched/build/config/compiler/BUILD.gn
+--- sdk/build/config/compiler/BUILD.gn	2025-09-05 09:46:04.536242052 +0200
++++ sdk-patched/build/config/compiler/BUILD.gn	2025-09-05 11:35:31.534580984 +0200
+@@ -617,13 +617,6 @@
+       cflags += [ "-ffp-contract=off" ]
+     }
+ 
+-    # Enable ELF CREL (see crbug.com/357878242) for all platforms that use ELF
+-    # (excluding toolchains that use an older version of LLVM).
+-    if (is_linux && use_lld && !llvm_android_mainline &&
+-        default_toolchain != "//build/toolchain/cros:target") {
+-      cflags += [ "-Wa,--crel,--allow-experimental-crel" ]
+-    }
+-
+     # TODO(crbug.com/413427035): Remove once
+     # https://github.com/llvm/llvm-project/pull/136867/ is landed.
+     if (!is_win && !llvm_android_mainline &&
