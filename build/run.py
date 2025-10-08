@@ -812,14 +812,18 @@ def build_webrtc(
         elif target in ('raspberry-pi-os_armv8',
                         'ubuntu-18.04_armv8',
                         'ubuntu-20.04_armv8'):
+            if platform.machine() in ['AMD64', 'x86_64']:
+                gn_args += [ 'host_cpu="x64"' ]
+            else:   # Assume ARM64 build host
+                gn_args += [ 'host_cpu="arm64"' ]
             gn_args += [
                 'host_os="linux"',
                 'target_os="linux"',
-                'host_cpu="arm64"',
                 'target_cpu="arm64"',
                 'use_custom_libcxx=false',
                 'use_custom_libcxx_for_host=false',
                 'clang_use_chrome_plugins=false',
+                'libyuv_use_sme=false',
                 'rtc_use_x11=false',
                 'rtc_use_pipewire=false',
                 'rtc_include_pulse_audio=false',
@@ -1070,50 +1074,20 @@ TARGETS = [
 
 def check_target(target):
     logging.debug(f'uname: {platform.uname()}')
+    logging.info(f'OS: {platform.system()}')
 
     if platform.system() == 'Windows':
-        logging.info(f'OS: {platform.system()}')
         return target in ['windows_x86_64', 'windows_x86', 'windows_arm64']
     elif platform.system() == 'Darwin':
-        logging.info(f'OS: {platform.system()}')
         return target in ('macos_x86_64', 'macos_arm64', 'ios', 'apple', 'apple_prefixed')
     elif platform.system() == 'Linux':
-        release = read_version_file('/etc/os-release')
-        os = release['NAME']
-        logging.info(f'OS: {os}')
-        if os != 'Ubuntu':
-            return False
-
-        # x86_64 環境以外ではビルド不可
-        # Requires an x86_64 machine to build.
-        arch = platform.machine()
-        logging.info(f'Arch: {arch}')
-        if arch not in ('AMD64', 'x86_64'):
-            return False
-
-        # クロスコンパイルなので Ubuntu だったら任意のバージョンでビルド可能（なはず）
-        # Cross compiling: if it's Ubuntu, any version should be able to build the following targets (theoretically)
-        if target in ('ubuntu-18.04_armv8',
-                      'ubuntu-20.04_armv8',
-                      'raspberry-pi-os_armv6',
-                      'raspberry-pi-os_armv7',
-                      'raspberry-pi-os_armv8',
-                      'android',
-                      'android_prefixed'):
-            return True
-
-        # x86_64 用ビルドはバージョンが合っている必要がある
-        # Builds for x86_64 require the version to match.
-        osver = release['VERSION_ID']
-        logging.info(f'OS Version: {osver}')
-        if target == 'ubuntu-18.04_x86_64' and osver == '18.04':
-            return True
-        if target == 'ubuntu-20.04_x86_64' and osver == '20.04':
-            return True
-        if target == 'ubuntu-22.04_x86_64' and osver == '22.04':
-            return True
-
-        return False
+        return target in ('ubuntu-18.04_x86_64', 'ubuntu-20.04_x86_64',  'ubuntu-22.04_x86_64',
+                          'ubuntu-18.04_armv8', 'ubuntu-20.04_armv8', 'raspberry-pi-os_armv8')
+        # These are untested/not catered for: 'android', 'android_prefixed',
+        # 'raspberry-pi-os_armv6', 'raspberry-pi-os_armv7'. They likely require
+        # cross-compiling on a x86_64 system, with the installation of a proper
+        # ARM system root (search for "install_sysroot" below to see how to
+        # proceed). HB
     else:
         return False
 
@@ -1188,11 +1162,8 @@ def main():
     if not hasattr(args, 'op'):
         parser.error('Required subcommand')
 
-    # Do not error out when the Linux distribution used to build the library is
-    # not known from the build system: we do not care since we use a virtual
-    # environment for the build... HB
-    #if not check_target(args.target):
-    #    raise Exception(f'Target {args.target} is not supported on your platform')
+    if not check_target(args.target):
+        raise Exception(f'Target {args.target} is not supported on your platform')
 
     configuration = 'debug' if args.debug else 'release'
 
@@ -1267,6 +1238,11 @@ def main():
                        webrtc_source_dir=webrtc_source_dir,
                        fetch=args.webrtc_fetch, force=args.webrtc_fetch_force)
 
+            if args.target in ['ubuntu-18.04_armv8', 'ubuntu-20.04_armv8', 'raspberry-pi-os_armv8']:
+                if platform.machine() in ['AMD64', 'x86_64']:
+                    install_sysroot = os.path.join(source_dir, 'webrtc', 'src', 'build', 'linux', 'sysroot_scripts', 'install-sysroot.py')
+                    cmd(['python3', install_sysroot, '--arch=arm64'])
+ 
             # ビルド
             # Build
             build_webrtc_args = {
