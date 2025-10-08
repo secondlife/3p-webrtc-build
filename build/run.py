@@ -812,10 +812,13 @@ def build_webrtc(
         elif target in ('raspberry-pi-os_armv8',
                         'ubuntu-18.04_armv8',
                         'ubuntu-20.04_armv8'):
+            if platform.machine() in ['AMD64', 'x86_64']:
+                gn_args += [ 'host_cpu="x64"' ]
+            else:   # Assume ARM64 build host
+                gn_args += [ 'host_cpu="arm64"' ]
             gn_args += [
                 'host_os="linux"',
                 'target_os="linux"',
-                'host_cpu="arm64"',
                 'target_cpu="arm64"',
                 'use_custom_libcxx=false',
                 'use_custom_libcxx_for_host=false',
@@ -1267,6 +1270,11 @@ def main():
                        webrtc_source_dir=webrtc_source_dir,
                        fetch=args.webrtc_fetch, force=args.webrtc_fetch_force)
 
+            if args.target in ['ubuntu-18.04_armv8', 'ubuntu-20.04_armv8']:
+                if platform.machine() in ['AMD64', 'x86_64']:
+                    install_sysroot = os.path.join(source_dir, 'webrtc', 'src', 'build', 'linux', 'sysroot_scripts', 'install-sysroot.py')
+                    cmd(['python3', install_sysroot, '--arch=arm64'])
+ 
             # ビルド
             # Build
             build_webrtc_args = {
