@@ -59,10 +59,10 @@ jobs:
       fail-fast: false
       matrix:
         name:
-          - macos_arm64
-          - macos_x86_64
+          - apple
+          # - apple_prefixed
           # - ios
-    runs-on: macos-15
+    runs-on: macos-26
     outputs:
       output-artifact-id: ${{ steps.artifact-upload-step.outputs.artifact-id }}
     steps:

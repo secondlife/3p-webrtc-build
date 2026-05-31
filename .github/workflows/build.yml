@@ -5,9 +5,8 @@ on:
     inputs:
       commitHash:
         description: 'webrtc-sdk commit hash'
-        default: 'm137_release'
+        default: 'm144_release'
         required: true
-
 
 jobs:
   build-windows:
@@ -52,7 +51,7 @@ jobs:
       matrix:
         name:
           - apple
-          - apple_prefixed
+          # - apple_prefixed
     runs-on: macos-26
     steps:
     - uses: actions/checkout@v5
