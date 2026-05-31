@@ -54,7 +54,7 @@ jobs:
           - macos_x86_64
           # - apple
           # - apple_prefixed
-    runs-on: macos-26
+    runs-on: macos-latest
     steps:
     - uses: actions/checkout@v5
     - name: Select Xcode 26.0
