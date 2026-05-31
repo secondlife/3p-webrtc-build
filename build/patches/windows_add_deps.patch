@@ -1,8 +1,8 @@
 diff --git a/BUILD.gn b/BUILD.gn
-index d5289b85d7..eed4f1e5d9 100644
+index 4f54d90b1b..c9730420f0 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
-@@ -517,6 +517,8 @@ if (!build_with_chromium) {
+@@ -567,6 +567,8 @@ if (!build_with_chromium) {
        "pc:rtc_pc",
        "sdk",
        "video",

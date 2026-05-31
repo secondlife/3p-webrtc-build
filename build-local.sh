@@ -51,8 +51,8 @@ pushd "$build"
 # Special case for macos universal packages
 case "$AUTOBUILD_PLATFORM" in
     darwin*)
-        # bash ./build.macos_x86_64.sh m137_release
-        # bash ./build.macos_arm64.sh m137_release
+        # bash ./build.macos_x86_64.sh m144_release
+        # bash ./build.macos_arm64.sh m144_release
 
         source_environment_tempfile="$stage/source_environment.sh"
         autobuild source_environment > "$source_environment_tempfile"
@@ -84,12 +84,12 @@ case "$AUTOBUILD_PLATFORM" in
         mv x86_64/NOTICE LICENSES/webrtc-license.txt
 
         build=${AUTOBUILD_BUILD_ID:=0}
-        echo "m137_release.${build}" > "$stage/VERSION.txt"
-        echo "m137_release.${build}" > "$top/VERSION.txt"
+        echo "m144_release.${build}" > "$stage/VERSION.txt"
+        echo "m144_release.${build}" > "$top/VERSION.txt"
         popd
     ;;
     *)
-        bash ./build."$build_type".sh m137_release
+        bash ./build."$build_type".sh m144_release
 
         source_environment_tempfile="$stage/source_environment.sh"
         autobuild source_environment > "$source_environment_tempfile"
@@ -111,8 +111,8 @@ case "$AUTOBUILD_PLATFORM" in
         mv NOTICE LICENSES/webrtc-license.txt
 
         build=${AUTOBUILD_BUILD_ID:=0}
-        echo "m137_release.${build}" > "$stage/VERSION.txt"
-        echo "m137_release.${build}" > "$top/VERSION.txt"
+        echo "m144_release.${build}" > "$stage/VERSION.txt"
+        echo "m144_release.${build}" > "$top/VERSION.txt"
         popd
     ;;
 esac

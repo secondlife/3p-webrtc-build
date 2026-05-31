@@ -172,7 +172,6 @@ def get_depot_tools(source_dir, fetch=False):
 
 
 PATCH_INFO = {
-    # 'macos_h264_encoder.patch': (2, []),
     # 'macos_screen_capture.patch': (2, []),
     # 'macos_use_xcode_clang.patch': (1, ['build']),
 }
@@ -218,7 +217,6 @@ PATCHES = {
     'macos_x86_64': [
         'add_license_dav1d.patch',
         'fix_mocks.patch',
-        'macos_h264_encoder.patch',
         'upsample-to-48khz-for-echo-cancellation-for-now.patch',
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
@@ -228,7 +226,6 @@ PATCHES = {
     'macos_arm64': [
         'add_license_dav1d.patch',
         'fix_mocks.patch',
-        'macos_h264_encoder.patch',
         'upsample-to-48khz-for-echo-cancellation-for-now.patch',
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
@@ -238,7 +235,6 @@ PATCHES = {
     'ios': [
         'add_license_dav1d.patch',
         'fix_mocks.patch',
-        'macos_h264_encoder.patch',
         'upsample-to-48khz-for-echo-cancellation-for-now.patch',
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',

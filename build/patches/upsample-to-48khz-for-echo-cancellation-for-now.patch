@@ -1,8 +1,8 @@
 diff --git a/audio/audio_transport_impl.cc b/audio/audio_transport_impl.cc
-index ae2302c045..4a443e2e4d 100644
+index 38ebf3a1c1..b3d7157fe0 100644
 --- a/audio/audio_transport_impl.cc
 +++ b/audio/audio_transport_impl.cc
-@@ -36,7 +36,10 @@ void InitializeCaptureFrame(int input_sample_rate,
+@@ -45,7 +45,10 @@ void InitializeCaptureFrame(int input_sample_rate,
                              size_t send_num_channels,
                              AudioFrame* audio_frame) {
    RTC_DCHECK(audio_frame);
@@ -14,7 +14,7 @@ index ae2302c045..4a443e2e4d 100644
    for (int native_rate_hz : AudioProcessing::kNativeSampleRatesHz) {
      audio_frame->SetSampleRateAndChannelSize(native_rate_hz);
      if (native_rate_hz >= min_processing_rate_hz) {
-@@ -138,7 +141,7 @@ int32_t AudioTransportImpl::RecordedDataIsAvailable(
+@@ -147,7 +150,7 @@ int32_t AudioTransportImpl::RecordedDataIsAvailable(
          estimated_capture_time_ns) {  // NOLINT: to avoid changing APIs
    RTC_DCHECK(audio_data);
    RTC_DCHECK_GE(number_of_channels, 1);

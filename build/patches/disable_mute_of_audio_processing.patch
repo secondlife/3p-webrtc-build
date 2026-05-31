@@ -1,8 +1,8 @@
 diff --git a/media/engine/webrtc_voice_engine.cc b/media/engine/webrtc_voice_engine.cc
-index d1a22b5b03..366297bf41 100644
+index b03337646b..9cd5cbded2 100644
 --- a/media/engine/webrtc_voice_engine.cc
 +++ b/media/engine/webrtc_voice_engine.cc
-@@ -1737,6 +1737,20 @@ bool WebRtcVoiceSendChannel::MuteStream(uint32_t ssrc, bool muted) {
+@@ -1773,6 +1773,20 @@ bool WebRtcVoiceSendChannel::MuteStream(uint32_t ssrc, bool muted) {
          std::all_of(send_streams_.begin(), send_streams_.end(),
                      [](const auto& kv) { return kv.second->IsMuted(); });
  
