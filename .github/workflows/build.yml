@@ -54,11 +54,11 @@ jobs:
           - macos_x86_64
           # - apple
           # - apple_prefixed
-    runs-on: macos-latest
+    runs-on: macos-15
     steps:
     - uses: actions/checkout@v5
-    - name: Select Xcode 26.0
-      run: sudo xcode-select --switch /Applications/Xcode_26.0.app/Contents/Developer
+    - name: Select Xcode 16.4
+      run: sudo xcode-select --switch /Applications/Xcode_16.4.app/Contents/Developer
     - run: brew install ninja
     - name: Build
       id: build
