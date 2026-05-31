@@ -815,7 +815,7 @@ def build_webrtc(
                 'rtc_use_x11=false',
                 "use_custom_libcxx=false",
                 "use_custom_libcxx_for_host=false",
-                'is_clang=true',
+                'is_clang=false',
                 'clang_use_chrome_plugins=false',
                 'use_lld=false',
                 'use_thin_lto=false',

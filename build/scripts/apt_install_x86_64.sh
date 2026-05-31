@@ -14,6 +14,7 @@ dpkg-reconfigure -f noninteractive tzdata
 export DEBIAN_FRONTEND=noninteractive
 
 apt-get -y install \
+  build-essential \
   binutils \
   git \
   locales \

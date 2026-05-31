@@ -33,7 +33,7 @@ case "$AUTOBUILD_PLATFORM" in
         build_type="windows_x86_64"
     ;;
     darwin*)
-        build_type="macos_x86_64"
+        build_type="apple"
         autobuild="$AUTOBUILD"
     ;;
     linux*)
