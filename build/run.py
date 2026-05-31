@@ -812,9 +812,14 @@ def build_webrtc(
             gn_args += [
                 'target_os="linux"',
                 'rtc_use_pipewire=false',
+                'rtc_use_x11=false',
                 "use_custom_libcxx=false",
                 "use_custom_libcxx_for_host=false",
-                'rtc_include_pulse_audio=false',
+                'is_clang=false',
+                'clang_use_chrome_plugins=false',
+                'use_lld=false',
+                'use_thin_lto=false',
+                'rtc_include_pulse_audio=true',
                 'rtc_include_internal_audio_device=true',
             ]
         else:
