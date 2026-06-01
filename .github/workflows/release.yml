@@ -64,13 +64,13 @@ jobs:
           # - apple
           # - apple_prefixed
           # - ios
-    runs-on: macos-15
+    runs-on: macos-latest
     outputs:
       output-artifact-id: ${{ steps.artifact-upload-step.outputs.artifact-id }}
     steps:
     - uses: actions/checkout@v4
-    - name: Select Xcode 16.4
-      run: sudo xcode-select --switch /Applications/Xcode_16.4.app/Contents/Developer
+    - name: Select Xcode 26.5
+      run: sudo xcode-select --switch /Applications/Xcode_26.5.app/Contents/Developer
     - run: brew install ninja
     - uses: actions/setup-python@v5
       with:
