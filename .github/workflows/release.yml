@@ -83,10 +83,10 @@ jobs:
       run: |
         echo "tag=${RELEASE%%.*}" >> "$GITHUB_OUTPUT"
         echo "3P_WEBRTC_BUILD_RELEASE_VERSION=${RELEASE}" >> "VERSION"
-      - name: Clean stale WebRTC build state
-        run: |
-          rm -rf "./build/_build/${{ matrix.name }}"
-          rm -rf "./build/_source/${{ matrix.name }}"
+    - name: Clean stale WebRTC build state
+      run: |
+        rm -rf "./build/_build/${{ matrix.name }}"
+        rm -rf "./build/_source/${{ matrix.name }}"
     - run: ./build.${{ matrix.name }}.sh "${{ steps.release_tag.outputs.tag }}_release"
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
