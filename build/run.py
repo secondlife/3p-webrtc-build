@@ -781,6 +781,7 @@ def build_webrtc(
                 'rtc_enable_symbol_export=true',
                 'rtc_enable_objc_symbol_export=false',
                 'use_custom_libcxx=false',
+                'use_clang_modules=false',
                 'treat_warnings_as_errors=false',
                 'clang_use_chrome_plugins=false',
                 'use_lld=false',
