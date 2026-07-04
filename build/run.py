@@ -263,31 +263,7 @@ PATCHES = {
         'fix_mocks.patch',
         'jni_prefix.patch'
     ],
-    'raspberry-pi-os_armv6': [
-        'add_license_dav1d.patch',
-        'fix_mocks.patch',
-        'upsample-to-48khz-for-echo-cancellation-for-now.patch',
-        'bug_8759_workaround.patch',
-        'disable_mute_of_audio_processing.patch',
-        'crash_on_fatal_error.patch',
-    ],
-    'raspberry-pi-os_armv7': [
-        'add_license_dav1d.patch',
-        'fix_mocks.patch',
-        'upsample-to-48khz-for-echo-cancellation-for-now.patch',
-        'bug_8759_workaround.patch',
-        'disable_mute_of_audio_processing.patch',
-        'crash_on_fatal_error.patch',
-    ],
     'raspberry-pi-os_armv8': [
-        'add_license_dav1d.patch',
-        'fix_mocks.patch',
-        'upsample-to-48khz-for-echo-cancellation-for-now.patch',
-        'bug_8759_workaround.patch',
-        'disable_mute_of_audio_processing.patch',
-        'crash_on_fatal_error.patch',
-    ],
-    'ubuntu-18.04_armv8': [
         'add_license_dav1d.patch',
         'fix_mocks.patch',
         'upsample-to-48khz-for-echo-cancellation-for-now.patch',
@@ -303,7 +279,7 @@ PATCHES = {
         'disable_mute_of_audio_processing.patch',
         'crash_on_fatal_error.patch',
     ],
-    'ubuntu-18.04_x86_64': [
+    'ubuntu-22.04_armv8': [
         'add_license_dav1d.patch',
         'fix_mocks.patch',
         'upsample-to-48khz-for-echo-cancellation-for-now.patch',
@@ -412,28 +388,18 @@ MultistrapConfig = collections.namedtuple('MultistrapConfig', [
     'triplet'
 ])
 MULTISTRAP_CONFIGS = {
-    'raspberry-pi-os_armv6': MultistrapConfig(
-        config_file=['raspberry-pi-os_armv6', 'rpi-raspbian.conf'],
-        arch='armhf',
-        triplet='arm-linux-gnueabihf'
-    ),
-    'raspberry-pi-os_armv7': MultistrapConfig(
-        config_file=['raspberry-pi-os_armv7', 'rpi-raspbian.conf'],
-        arch='armhf',
-        triplet='arm-linux-gnueabihf'
-    ),
     'raspberry-pi-os_armv8': MultistrapConfig(
         config_file=['raspberry-pi-os_armv8', 'rpi-raspbian.conf'],
         arch='arm64',
         triplet='aarch64-linux-gnu'
     ),
-    'ubuntu-18.04_armv8': MultistrapConfig(
-        config_file=['ubuntu-18.04_armv8', 'arm64.conf'],
+    'ubuntu-20.04_armv8': MultistrapConfig(
+        config_file=['ubuntu-20.04_armv8', 'arm64.conf'],
         arch='arm64',
         triplet='aarch64-linux-gnu'
     ),
-    'ubuntu-20.04_armv8': MultistrapConfig(
-        config_file=['ubuntu-20.04_armv8', 'arm64.conf'],
+    'ubuntu-22.04_armv8': MultistrapConfig(
+        config_file=['ubuntu-22.04_armv8', 'arm64.conf'],
         arch='arm64',
         triplet='aarch64-linux-gnu'
     ),
@@ -508,8 +474,11 @@ TARGET_EXTRA_GN_ARGS = {
 
 def get_build_targets(target):
     ts = [':default']
-    if target not in ('windows_x86_64', 'windows_x86', 'windows_arm64', 'ios', 'macos_x86_64', 'macos_arm64', 'ubuntu-18.04_x86_64', 'ubuntu-20.04_x86_64', 'ubuntu-22.04_x86_64'):
-        ts += ['buildtools/third_party/libc++']
+    # Linux arm targets shall also be excluded, and since even macOS targets
+    # are excluded below (strange: the viewer is compiled against libc++ under
+    # macOS...), then no target needs libc++ !  HB
+    #if target not in ('windows_x86_64', 'windows_x86', 'windows_arm64', 'ios', 'macos_x86_64', 'macos_arm64', 'ubuntu-20.04_x86_64', 'ubuntu-22.04_x86_64'):
+    #    ts += ['buildtools/third_party/libc++']
     ts += WEBRTC_BUILD_TARGETS.get(target, [])
     return ts
 
@@ -786,30 +755,25 @@ def build_webrtc(
                 'clang_use_chrome_plugins=false',
                 'use_lld=false',
             ]
-        elif target in ('raspberry-pi-os_armv6',
-                        'raspberry-pi-os_armv7',
-                        'raspberry-pi-os_armv8',
-                        'ubuntu-18.04_armv8',
-                        'ubuntu-20.04_armv8'):
+        elif target in ('raspberry-pi-os_armv8', 'ubuntu-20.04_armv8', 'ubuntu-22.04_armv8'):
             sysroot = os.path.join(source_dir, 'rootfs')
-            arm64_set = ("raspberry-pi-os_armv8", "ubuntu-18.04_armv8", "ubuntu-20.04_armv8")
             gn_args += [
                 'target_os="linux"',
-                f'target_cpu="{"arm64" if target in arm64_set else "arm"}"',
+                'target_cpu="arm64"',
                 f'target_sysroot="{sysroot}"',
                 'rtc_use_pipewire=false',
+                'rtc_use_x11=false',
+                "use_custom_libcxx=false",
+                "use_custom_libcxx_for_host=false",
+                'is_clang=false',
+                'clang_use_chrome_plugins=false',
+                'libyuv_use_sme=false',
+                'use_lld=false',
+                'use_thin_lto=false',
+                'rtc_include_pulse_audio=true',
+                'rtc_include_internal_audio_device=true',
             ]
-            if target == 'raspberry-pi-os_armv6':
-                gn_args += [
-                    'arm_version=6',
-                    'arm_arch="armv6"',
-                    'arm_tune="arm1176jzf-s"',
-                    'arm_fpu="vfpv2"',
-                    'arm_float_abi="hard"',
-                    'arm_use_neon=false',
-                    'enable_libaom=false',
-                ]
-        elif target in ('ubuntu-18.04_x86_64', 'ubuntu-20.04_x86_64', 'ubuntu-22.04_x86_64'):
+        elif target in ('ubuntu-20.04_x86_64', 'ubuntu-22.04_x86_64'):
             gn_args += [
                 'target_os="linux"',
                 'rtc_use_pipewire=false',
@@ -1040,13 +1004,10 @@ TARGETS = [
     'windows_arm64',
     'macos_x86_64',
     'macos_arm64',
-    'ubuntu-18.04_x86_64',
     'ubuntu-20.04_x86_64',
     'ubuntu-22.04_x86_64',
-    'ubuntu-18.04_armv8',
     'ubuntu-20.04_armv8',
-    'raspberry-pi-os_armv6',
-    'raspberry-pi-os_armv7',
+    'ubuntu-22.04_armv8',
     'raspberry-pi-os_armv8',
     'android',
     'android_prefixed',
@@ -1059,53 +1020,16 @@ TARGETS = [
 
 def check_target(target):
     logging.debug(f'uname: {platform.uname()}')
+    logging.info(f'OS: {platform.system()}')
 
     if platform.system() == 'Windows':
-        logging.info(f'OS: {platform.system()}')
         return target in ['windows_x86_64', 'windows_x86', 'windows_arm64']
     elif platform.system() == 'Darwin':
-        logging.info(f'OS: {platform.system()}')
         return target in ('macos_x86_64', 'macos_arm64', 'ios', 'apple', 'apple_prefixed')
     elif platform.system() == 'Linux':
-        release = read_version_file('/etc/os-release')
-        os = release['NAME']
-        logging.info(f'OS: {os}')
-        if os != 'Ubuntu':
-            return False
-
-        # x86_64 環境以外ではビルド不可
-        # Requires an x86_64 machine to build.
-        arch = platform.machine()
-        logging.info(f'Arch: {arch}')
-        if arch not in ('AMD64', 'x86_64'):
-            return False
-
-        # クロスコンパイルなので Ubuntu だったら任意のバージョンでビルド可能（なはず）
-        # Cross compiling: if it's Ubuntu, any version should be able to build the following targets (theoretically)
-        if target in ('ubuntu-18.04_armv8',
-                      'ubuntu-20.04_armv8',
-                      'raspberry-pi-os_armv6',
-                      'raspberry-pi-os_armv7',
-                      'raspberry-pi-os_armv8',
-                      'android',
-                      'android_prefixed',
-                      'android_prefixed_stripped'):
-            return True
-
-        # x86_64 用ビルドはバージョンが合っている必要がある
-        # Builds for x86_64 require the version to match.
-        osver = release['VERSION_ID']
-        logging.info(f'OS Version: {osver}')
-        if target == 'ubuntu-18.04_x86_64' and osver == '18.04':
-            return True
-        if target == 'ubuntu-20.04_x86_64' and osver == '20.04':
-            return True
-        if target == 'ubuntu-22.04_x86_64' and osver == '22.04':
-            return True
-
-        return False
-    else:
-        return False
+        return target in ('ubuntu-20.04_x86_64',  'ubuntu-22.04_x86_64',
+                          'ubuntu-20.04_armv8', 'ubuntu-22.04_armv8', 'raspberry-pi-os_armv8')
+    return False
 
 
 def main():
