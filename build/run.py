@@ -270,6 +270,8 @@ PATCHES = {
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
         'crash_on_fatal_error.patch',
+        'disable_crel.patch',
+        'audio_device_alsa_linux.patch',
     ],
     'ubuntu-20.04_armv8': [
         'add_license_dav1d.patch',
@@ -278,6 +280,8 @@ PATCHES = {
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
         'crash_on_fatal_error.patch',
+        'disable_crel.patch',
+        'audio_device_alsa_linux.patch',
     ],
     'ubuntu-22.04_armv8': [
         'add_license_dav1d.patch',
@@ -286,6 +290,8 @@ PATCHES = {
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
         'crash_on_fatal_error.patch',
+        'disable_crel.patch',
+        'audio_device_alsa_linux.patch',
     ],
     'ubuntu-20.04_x86_64': [
         'add_license_dav1d.patch',
@@ -294,6 +300,8 @@ PATCHES = {
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
         'crash_on_fatal_error.patch',
+        'disable_crel.patch',
+        'audio_device_alsa_linux.patch',
     ],
     'ubuntu-22.04_x86_64': [
         'add_license_dav1d.patch',
@@ -302,6 +310,8 @@ PATCHES = {
         'bug_8759_workaround.patch',
         'disable_mute_of_audio_processing.patch',
         'crash_on_fatal_error.patch',
+        'disable_crel.patch',
+        'audio_device_alsa_linux.patch',
     ],
 }
 
@@ -379,7 +389,11 @@ def archive_objects(ar, dir, output):
         files = cmdcap(['find', '.', '-name', '*.o', '-not', '-path', './third_party/nasm/*']).splitlines()
         print(files)
         rm_rf(output)
-        cmd([ar, '-rcs', output, *files])
+        cmd([ar, '--format=gnu', '-rcs', output, *files])
+        # Create a sorted index of the *native object modules* for the library,
+        # which is unlike 'llvm-ar s' and is needed to link it against shared
+        # libraries with most linkers. HB
+        cmd(['ranlib', output])
 
 
 MultistrapConfig = collections.namedtuple('MultistrapConfig', [
@@ -770,7 +784,7 @@ def build_webrtc(
                 'libyuv_use_sme=false',
                 'use_lld=false',
                 'use_thin_lto=false',
-                'rtc_include_pulse_audio=true',
+                'rtc_include_pulse_audio=false',
                 'rtc_include_internal_audio_device=true',
             ]
         elif target in ('ubuntu-20.04_x86_64', 'ubuntu-22.04_x86_64'):
@@ -784,7 +798,7 @@ def build_webrtc(
                 'clang_use_chrome_plugins=false',
                 'use_lld=false',
                 'use_thin_lto=false',
-                'rtc_include_pulse_audio=true',
+                'rtc_include_pulse_audio=false',
                 'rtc_include_internal_audio_device=true',
             ]
         else:
