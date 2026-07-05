@@ -1,4 +1,4 @@
-import subprocess
+import subprocess
 import json
 import logging
 import os
@@ -389,7 +389,13 @@ def archive_objects(ar, dir, output):
         files = cmdcap(['find', '.', '-name', '*.o', '-not', '-path', './third_party/nasm/*']).splitlines()
         print(files)
         rm_rf(output)
-        cmd([ar, '--format=gnu', '-rcs', output, *files])
+        try:
+            # WebRTC SDK build system normally uses llvm-ar: let's ensure it
+            # outputs a GNU format.
+            cmd([ar, '--format=gnu', '-rcs', output, *files])
+        except: 
+            # Oops... No, it is actually gnu-ar without a --format option.
+            cmd([ar, '-rcs', output, *files])
         # Create a sorted index of the *native object modules* for the library,
         # which is unlike 'llvm-ar s' and is needed to link it against shared
         # libraries with most linkers. HB
