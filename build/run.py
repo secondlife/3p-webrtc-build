@@ -1,4 +1,4 @@
-import subprocess
+import subprocess
 import json
 import logging
 import os
@@ -160,14 +160,25 @@ def enum_all_files(dir, dir2):
             yield os.path.relpath(os.path.join(root, file), dir2)
 
 
-def get_depot_tools(source_dir, fetch=False):
+def get_depot_tools(source_dir, fetch=False, date=''):
     dir = os.path.join(source_dir, 'depot_tools')
     if os.path.exists(dir):
         if fetch:
-            cmd(['git', 'fetch'])
-            cmd(['git', 'checkout', '-f', 'origin/HEAD'])
+            cmd(['git', 'fetch'], cwd=dir)
+            if date != '':
+                before = '--before="' + date + '"'
+                commit = cmdcap(['git', 'rev-list', '--all', '--max-count=1', before], cwd=dir)
+                cmd(['git', 'checkout', '-f', commit], cwd=dir)
+                cmd(['python3', os.path.join(dir, 'update_depot_tools_toggle.py'), '--disable'], cwd=dir)
+            else:
+                cmd(['git', 'checkout', '-f', 'origin/HEAD'], cwd=dir)
     else:
         cmd(['git', 'clone', 'https://chromium.googlesource.com/chromium/tools/depot_tools.git', dir])
+        if date != '':
+            before = '--before="' + date + '"'
+            commit = cmdcap(['git', 'rev-list', '--all', '--max-count=1', before], cwd=dir)
+            cmd(['git', 'checkout', '-f', commit], cwd=dir)
+            cmd(['python3', os.path.join(dir, 'update_depot_tools_toggle.py'), '--disable'], cwd=dir)
     return dir
 
 
@@ -339,7 +350,7 @@ def get_webrtc(source_dir, patch_dir, version, target,
 
     if not os.path.exists(os.path.join(webrtc_source_dir, 'src')):
         with cd(webrtc_source_dir):
-            cmd(['gclient'])
+            #cmd(['gclient']) # This is totally useless and only prints the help page
             shutil.copyfile(os.path.join(BASE_DIR, '.gclient'), '.gclient')
             cmd(['git', 'clone', 'https://github.com/webrtc-sdk/webrtc.git', 'src'])
             if target in ['android', 'android_prefixed', 'android_prefixed_stripped']:
@@ -362,7 +373,7 @@ def get_webrtc(source_dir, patch_dir, version, target,
                 cmd(['git', 'branch'])
                 cmd(['git', 'checkout', '-f', version])
             cmd(['git', 'clean', '-df'])
-            cmd(['gclient', 'sync', '-D', '--force', '--reset', '--with_branch_heads', '--jobs=8'])
+            cmd(['gclient', 'sync', '-D', '--force', '--reset', '--revision', version, '--with_branch_heads', '--jobs=8'])
             for patch in PATCHES[target]:
                 depth, dirs = PATCH_INFO.get(patch, (1, ['.']))
                 dir = os.path.join(src_dir, *dirs)
@@ -1196,6 +1207,12 @@ def main():
             get_webrtc(source_dir, patch_dir, commit, args.target,
                        webrtc_source_dir=webrtc_source_dir,
                        fetch=args.webrtc_fetch, force=args.webrtc_fetch_force)
+
+            # Sync the version of depot_tools with the webrtc commit date
+            webrtc_dir = os.path.join(source_dir, 'webrtc', 'src')
+            with cd(webrtc_dir):
+                commit_date = cmdcap(['git', 'show', '--no-patch', '--format=%ci', commit])
+            get_depot_tools(source_dir, fetch=True, date=commit_date)
 
             # ビルド
             # Build
