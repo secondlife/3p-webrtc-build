@@ -1,5 +1,5 @@
 diff --git a/modules/audio_device/win/core_audio_utility_win.cc b/modules/audio_device/win/core_audio_utility_win.cc
-index dbfefa0428..8c6419d97c 100644
+index dbfefa0428..a72443f40d 100644
 --- a/modules/audio_device/win/core_audio_utility_win.cc
 +++ b/modules/audio_device/win/core_audio_utility_win.cc
 @@ -904,9 +904,9 @@ HRESULT SetClientProperties(IAudioClient2* client) {
@@ -14,20 +14,3 @@ index dbfefa0428..8c6419d97c 100644
    // Hardware-offloaded audio processing allows the main audio processing tasks
    // to be performed outside the computer's main CPU. Check support and log the
    // result but hard-code `bIsOffload` to FALSE for now.
-@@ -925,14 +925,14 @@ HRESULT SetClientProperties(IAudioClient2* client) {
-   RTC_DLOG(LS_INFO) << "options: Not supported in this build";
- #else
-   // TODO(henrika): pros and cons compared with AUDCLNT_STREAMOPTIONS_NONE?
--  props.Options |= AUDCLNT_STREAMOPTIONS_NONE;
-+  // props.Options |= AUDCLNT_STREAMOPTIONS_NONE;
-   // Requires System.Devices.AudioDevice.RawProcessingSupported.
-   // The application can choose to *always ignore* the OEM AEC/AGC by setting
-   // the AUDCLNT_STREAMOPTIONS_RAW flag in the call to SetClientProperties.
-   // This flag will preserve the user experience aspect of Communications
-   // streams, but will not insert any OEM provided communications specific
-   // processing in the audio signal path.
--  // props.Options |= AUDCLNT_STREAMOPTIONS_RAW;
-+  props.Options |= AUDCLNT_STREAMOPTIONS_RAW;
- 
-   // If it is important to avoid resampling in the audio engine, set this flag.
-   // AUDCLNT_STREAMOPTIONS_MATCH_FORMAT (or anything in IAudioClient3) is not
