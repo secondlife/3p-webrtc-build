@@ -1,8 +1,51 @@
 diff --git a/modules/audio_device/win/audio_device_core_win.cc b/modules/audio_device/win/audio_device_core_win.cc
-index f21f7aae6f..dd38527c22 100644
+index f21f7aae6f..cdc342ca28 100644
 --- a/modules/audio_device/win/audio_device_core_win.cc
 +++ b/modules/audio_device/win/audio_device_core_win.cc
-@@ -1832,8 +1832,8 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
+@@ -77,6 +77,42 @@ enum { COM_THREADING_MODEL = COINIT_MULTITHREADED };
+ 
+ enum { kAecCaptureStreamIndex = 0, kAecRenderStreamIndex = 1 };
+ 
++// Tells the system not to duck (attenuate) other applications' audio while this
++// render stream is active. Uses IAudioClientDuckingControl, which is the
++// documented way for a communication app to avoid triggering the default
++// ducking experience. It is available on Windows 10 Build 20348 and later; on
++// older systems GetService() fails and we simply keep the default behavior.
++// The interface must be obtained from an initialized render IAudioClient, so
++// call this after Initialize() and before Start(). Non-fatal on any failure.
++void DisableDuckingOfOtherStreams(IAudioClient* render_client) {
++#if defined(__IAudioClientDuckingControl_INTERFACE_DEFINED__)
++  if (!render_client) {
++    return;
++  }
++  IAudioClientDuckingControl* ducking_control = nullptr;
++  HRESULT hr = render_client->GetService(IID_PPV_ARGS(&ducking_control));
++  if (FAILED(hr) || !ducking_control) {
++    RTC_LOG(LS_WARNING)
++        << "GetService(IAudioClientDuckingControl) unavailable (requires "
++           "Windows 10 build 20348+): 0x"
++        << ToHex(hr);
++    return;
++  }
++  hr = ducking_control->SetDuckingOptionsForCurrentStream(
++      AUDIO_DUCKING_OPTIONS_DO_NOT_DUCK_OTHER_STREAMS);
++  if (FAILED(hr)) {
++    RTC_LOG(LS_WARNING) << "SetDuckingOptionsForCurrentStream() failed: 0x"
++                        << ToHex(hr);
++  } else {
++    RTC_LOG(LS_INFO) << "Disabled ducking of other applications' audio";
++  }
++  SAFE_RELEASE(ducking_control);
++#else
++  RTC_LOG(LS_WARNING) << "IAudioClientDuckingControl not available in this SDK; "
++                         "cannot disable ducking of other streams";
++#endif
++}
++
+ // An implementation of IMediaBuffer, as required for
+ // IMediaObject::ProcessOutput(). After consuming data provided by
+ // ProcessOutput(), call SetLength() to update the buffer availability.
+@@ -1832,8 +1868,8 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
  
    HRESULT hr = S_OK;
    WAVEFORMATEX* pWfxOut = NULL;
@@ -13,7 +56,35 @@ index f21f7aae6f..dd38527c22 100644
  
    // Create COM object with IAudioClient interface.
    SAFE_RELEASE(_ptrClientOut);
-@@ -1863,11 +1863,14 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
+@@ -1841,6 +1877,27 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
+                                (void**)&_ptrClientOut);
+   EXIT_ON_ERROR(hr);
+ 
++  // Classify the render stream as Media (not Communications) before it is
++  // initialized. A stream marked AudioCategory_Communications is what enables
++  // the system to duck other applications' audio; the render client is opened
++  // with no category by default, so set it explicitly to Media to keep it out
++  // of the ducking experience. Must be done before IAudioClient::Initialize().
++  {
++    IAudioClient2* client2 = nullptr;
++    hr = _ptrClientOut->QueryInterface(IID_PPV_ARGS(&client2));
++    if (SUCCEEDED(hr) && client2) {
++      AudioClientProperties props = {};
++      props.cbSize = sizeof(props);
++      props.eCategory = AudioCategory_Media;
++      hr = client2->SetClientProperties(&props);
++      if (FAILED(hr)) {
++        RTC_LOG(LS_WARNING)
++            << "SetClientProperties(Media) for render failed: 0x" << ToHex(hr);
++      }
++      SAFE_RELEASE(client2);
++    }
++  }
++
+   // Retrieve the stream format that the audio engine uses for its internal
+   // processing (mixing) of shared-mode streams.
+   hr = _ptrClientOut->GetMixFormat(&pWfxOut);
+@@ -1863,11 +1920,14 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
    }
  
    // Set wave format
@@ -32,7 +103,7 @@ index f21f7aae6f..dd38527c22 100644
    hr = S_FALSE;
  
    // Iterate over frequencies and channels, in order of priority
-@@ -1875,30 +1878,38 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
+@@ -1875,30 +1935,38 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
      for (unsigned int chan = 0; chan < sizeof(_playChannelsPrioList) /
                                             sizeof(_playChannelsPrioList[0]);
           chan++) {
@@ -85,7 +156,7 @@ index f21f7aae6f..dd38527c22 100644
                             << " is not supported. No closest match.";
          }
        }
-@@ -1910,25 +1921,38 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
+@@ -1910,25 +1978,38 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
    // TODO(andrew): what happens in the event of failure in the above loop?
    //   Is _ptrClientOut->Initialize expected to fail?
    //   Same in InitRecording().
@@ -139,7 +210,7 @@ index f21f7aae6f..dd38527c22 100644
      RTC_LOG(LS_VERBOSE) << "Additional settings:";
      RTC_LOG(LS_VERBOSE) << "_playAudioFrameSize: " << _playAudioFrameSize;
      RTC_LOG(LS_VERBOSE) << "_playBlockSize     : " << _playBlockSize;
-@@ -1965,12 +1989,12 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
+@@ -1965,12 +2046,12 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
    }
    hr = _ptrClientOut->Initialize(
        AUDCLNT_SHAREMODE_SHARED,  // share Audio Engine with other applications
@@ -155,7 +226,17 @@ index f21f7aae6f..dd38527c22 100644
        NULL);              // session GUID
  
    if (FAILED(hr)) {
-@@ -2001,11 +2025,6 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
+@@ -1978,6 +2059,9 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
+   }
+   EXIT_ON_ERROR(hr);
+ 
++  // Ask the system not to duck other applications' audio while we render.
++  DisableDuckingOfOtherStreams(_ptrClientOut);
++
+   if (_ptrAudioBuffer) {
+     // Update the audio buffer with the selected parameters
+     _ptrAudioBuffer->SetPlayoutSampleRate(_playSampleRate);
+@@ -2001,11 +2085,6 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
                          << bufferFrameCount * _playAudioFrameSize << " bytes)";
    }
  
@@ -167,7 +248,7 @@ index f21f7aae6f..dd38527c22 100644
    // Get an IAudioRenderClient interface.
    SAFE_RELEASE(_ptrRenderClient);
    hr = _ptrClientOut->GetService(__uuidof(IAudioRenderClient),
-@@ -2016,7 +2035,7 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
+@@ -2016,7 +2095,7 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
    _playIsInitialized = true;
  
    CoTaskMemFree(pWfxOut);
@@ -176,7 +257,7 @@ index f21f7aae6f..dd38527c22 100644
  
    RTC_LOG(LS_VERBOSE) << "render side is now initialized";
    return 0;
-@@ -2024,7 +2043,7 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
+@@ -2024,7 +2103,7 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
  Exit:
    _TraceCOMError(hr);
    CoTaskMemFree(pWfxOut);
@@ -185,7 +266,7 @@ index f21f7aae6f..dd38527c22 100644
    SAFE_RELEASE(_ptrClientOut);
    SAFE_RELEASE(_ptrRenderClient);
    return -1;
-@@ -2148,7 +2167,7 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
+@@ -2148,7 +2227,7 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
    HRESULT hr = S_OK;
    WAVEFORMATEX* pWfxIn = NULL;
    WAVEFORMATEXTENSIBLE Wfx = WAVEFORMATEXTENSIBLE();
@@ -194,7 +275,7 @@ index f21f7aae6f..dd38527c22 100644
  
    // Create COM object with IAudioClient interface.
    SAFE_RELEASE(_ptrClientIn);
-@@ -2156,6 +2175,25 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
+@@ -2156,6 +2235,40 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
                                (void**)&_ptrClientIn);
    EXIT_ON_ERROR(hr);
  
@@ -202,25 +283,40 @@ index f21f7aae6f..dd38527c22 100644
 +
 +  hr = _ptrClientIn->QueryInterface(IID_PPV_ARGS(&client2));
 +
-+  if (hr == S_OK) {
++  if (SUCCEEDED(hr) && client2) {
 +    AudioClientProperties props = {};
 +    props.cbSize = sizeof(props);
-+    props.eCategory = AudioCategory_Other;
++    // Use the Media category (not Communications) so that opening a capture
++    // stream on the communications endpoint does not trigger the system to
++    // duck other applications' audio.
++    props.eCategory = AudioCategory_Media;
++    // Prefer RAW mode, which bypasses OEM capture processing. It is only
++    // available on endpoints that advertise RawProcessingSupported, and when it
++    // is not, SetClientProperties() fails as a whole -- which would also drop
++    // the Media category and let the stream fall back to communications
++    // behavior (i.e. ducking returns). So if the RAW call fails, retry with
++    // just the Media category to make sure the anti-ducking category still
++    // applies.
 +    props.Options = AUDCLNT_STREAMOPTIONS_RAW;
-+
 +    hr = client2->SetClientProperties(&props);
 +    if (FAILED(hr)) {
-+      RTC_LOG(LS_WARNING) << "IAudioClient2::SetClientProperties() failed:  "
-+                             "Could not use RAW audio input mode";
-+      client2->Release();
-+      client2 = nullptr;
++      RTC_LOG(LS_WARNING) << "SetClientProperties() with RAW failed: 0x"
++                          << ToHex(hr) << "; retrying without RAW";
++      props.Options = AUDCLNT_STREAMOPTIONS_NONE;
++      hr = client2->SetClientProperties(&props);
++      if (FAILED(hr)) {
++        RTC_LOG(LS_WARNING)
++            << "SetClientProperties() for Media category failed: 0x"
++            << ToHex(hr);
++      }
 +    }
++    SAFE_RELEASE(client2);
 +  }
 +
    // Retrieve the stream format that the audio engine uses for its internal
    // processing (mixing) of shared-mode streams.
    hr = _ptrClientIn->GetMixFormat(&pWfxIn);
-@@ -2185,7 +2223,7 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
+@@ -2185,7 +2298,7 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
    Wfx.Samples.wValidBitsPerSample = Wfx.Format.wBitsPerSample;
    Wfx.SubFormat = KSDATAFORMAT_SUBTYPE_PCM;
  
@@ -229,7 +325,7 @@ index f21f7aae6f..dd38527c22 100644
    hr = S_FALSE;
  
    // Iterate over frequencies and channels, in order of priority
-@@ -2202,8 +2240,10 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
+@@ -2202,8 +2315,10 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
        // If the method succeeds and the audio endpoint device supports the
        // specified stream format, it returns S_OK. If the method succeeds and
        // provides a closest match to the specified format, it returns S_FALSE.
@@ -242,7 +338,7 @@ index f21f7aae6f..dd38527c22 100644
        if (hr == S_OK) {
          break;
        } else {
-@@ -2212,10 +2252,14 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
+@@ -2212,10 +2327,14 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
                             << ", nSamplesPerSec=" << Wfx.Format.nSamplesPerSec
                             << " is not supported. Closest match: "
                                "nChannels="
@@ -261,7 +357,7 @@ index f21f7aae6f..dd38527c22 100644
          } else {
            RTC_LOG(LS_INFO) << "nChannels=" << Wfx.Format.nChannels
                             << ", nSamplesPerSec=" << Wfx.Format.nSamplesPerSec
-@@ -2226,7 +2270,20 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
+@@ -2226,7 +2345,20 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
      if (hr == S_OK)
        break;
    }
@@ -283,7 +379,7 @@ index f21f7aae6f..dd38527c22 100644
    if (hr == S_OK) {
      _recAudioFrameSize = Wfx.Format.nBlockAlign;
      _recSampleRate = Wfx.Format.nSamplesPerSec;
-@@ -2254,6 +2311,8 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
+@@ -2254,6 +2386,8 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
        AUDCLNT_SHAREMODE_SHARED,  // share Audio Engine with other applications
        AUDCLNT_STREAMFLAGS_EVENTCALLBACK |  // processing of the audio buffer by
                                             // the client will be event driven
@@ -292,15 +388,7 @@ index f21f7aae6f..dd38527c22 100644
            AUDCLNT_STREAMFLAGS_NOPERSIST,   // volume and mute settings for an
                                             // audio session will not persist
                                             // across system restarts
-@@ -2267,6 +2326,7 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
-   }
-   EXIT_ON_ERROR(hr);
- 
-+
-   if (_ptrAudioBuffer) {
-     // Update the audio buffer with the selected parameters
-     _ptrAudioBuffer->SetRecordingSampleRate(_recSampleRate);
-@@ -2305,7 +2365,7 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
+@@ -2305,7 +2439,7 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
    _recIsInitialized = true;
  
    CoTaskMemFree(pWfxIn);
@@ -309,7 +397,7 @@ index f21f7aae6f..dd38527c22 100644
  
    RTC_LOG(LS_VERBOSE) << "capture side is now initialized";
    return 0;
-@@ -2313,7 +2373,7 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
+@@ -2313,7 +2447,7 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
  Exit:
    _TraceCOMError(hr);
    CoTaskMemFree(pWfxIn);
@@ -318,7 +406,7 @@ index f21f7aae6f..dd38527c22 100644
    SAFE_RELEASE(_ptrClientIn);
    SAFE_RELEASE(_ptrCaptureClient);
    return -1;
-@@ -2645,7 +2705,6 @@ DWORD WINAPI AudioDeviceWindowsCore::WSAPICaptureThreadPollDMO(LPVOID context) {
+@@ -2645,7 +2779,6 @@ DWORD WINAPI AudioDeviceWindowsCore::WSAPICaptureThreadPollDMO(LPVOID context) {
  
  DWORD AudioDeviceWindowsCore::DoRenderThread() {
    bool keepPlaying = true;
@@ -326,7 +414,7 @@ index f21f7aae6f..dd38527c22 100644
    HRESULT hr = S_OK;
    HANDLE hMmTask = NULL;
  
-@@ -2761,20 +2820,16 @@ DWORD AudioDeviceWindowsCore::DoRenderThread() {
+@@ -2761,20 +2894,16 @@ DWORD AudioDeviceWindowsCore::DoRenderThread() {
    // >> ------------------ THREAD LOOP ------------------
  
    while (keepPlaying) {
