@@ -1,0 +1,1049 @@
+diff --git a/api/audio/audio_device.h b/api/audio/audio_device.h
+index 5058ca5346..a730aefad6 100644
+--- a/api/audio/audio_device.h
++++ b/api/audio/audio_device.h
+@@ -51,6 +51,13 @@ class AudioDeviceModule : public RefCountInterface {
+ 
+   enum WindowsDeviceType { kDefaultCommunicationDevice = -1, kDefaultDevice = -2 };
+ 
++  // Stream category of the playout or recording device, passed to
++  // InitPlayout() and InitRecording(). kCommunications lets the OS treat the
++  // stream as a voice call (e.g. ducking other applications' audio); kMedia
++  // does not. Only honored by the Windows Core Audio ADM (kWindowsCoreAudio);
++  // ignored on all other platforms.
++  enum class AudioCategory { kMedia, kCommunications };
++
+   // Only supported on iOS.
+ #if defined(WEBRTC_IOS)
+   enum MutedSpeechEvent { kMutedSpeechStarted, kMutedSpeechEnded };
+@@ -104,10 +111,10 @@ class AudioDeviceModule : public RefCountInterface {
+ 
+   // Audio transport initialization
+   virtual int32_t PlayoutIsAvailable(bool* available) = 0;
+-  virtual int32_t InitPlayout() = 0;
++  virtual int32_t InitPlayout(AudioCategory category = AudioCategory::kMedia) = 0;
+   virtual bool PlayoutIsInitialized() const = 0;
+   virtual int32_t RecordingIsAvailable(bool* available) = 0;
+-  virtual int32_t InitRecording() = 0;
++  virtual int32_t InitRecording(AudioCategory category = AudioCategory::kMedia) = 0;
+   virtual bool RecordingIsInitialized() const = 0;
+ 
+   // Audio transport control
+diff --git a/audio/audio_state_unittest.cc b/audio/audio_state_unittest.cc
+index 7b6f9f5fdd..efebf4a1ad 100644
+--- a/audio/audio_state_unittest.cc
++++ b/audio/audio_state_unittest.cc
+@@ -395,7 +395,7 @@ TEST_P(AudioStateTest, StartRecordingDoesNothingWithoutStream) {
+   auto* adm = reinterpret_cast<MockAudioDeviceModule*>(
+       helper.config().audio_device_module.get());
+ 
+-  EXPECT_CALL(*adm, InitRecording()).Times(0);
++  EXPECT_CALL(*adm, InitRecording(_)).Times(0);
+   EXPECT_CALL(*adm, StartRecording()).Times(0);
+   EXPECT_CALL(*adm, StopRecording()).Times(1);
+   audio_state->SetRecording(false);
+@@ -430,7 +430,7 @@ TEST_P(AudioStateTest, AlwaysCallInitRecordingBeforeStartRecording) {
+   MockAudioSendStream stream;
+   {
+     InSequence s;
+-    EXPECT_CALL(*adm, InitRecording());
++    EXPECT_CALL(*adm, InitRecording(_));
+     EXPECT_CALL(*adm, StartRecording());
+     audio_state->AddSendingStream(&stream, kSampleRate, kNumberOfChannels);
+   }
+@@ -440,7 +440,7 @@ TEST_P(AudioStateTest, AlwaysCallInitRecordingBeforeStartRecording) {
+ 
+   {
+     InSequence s;
+-    EXPECT_CALL(*adm, InitRecording());
++    EXPECT_CALL(*adm, InitRecording(_));
+     EXPECT_CALL(*adm, StartRecording());
+     audio_state->SetRecording(true);
+   }
+@@ -474,7 +474,7 @@ TEST_P(AudioStateTest, StartPlayoutDoesNothingWithoutStream) {
+   auto* adm = reinterpret_cast<MockAudioDeviceModule*>(
+       helper.config().audio_device_module.get());
+ 
+-  EXPECT_CALL(*adm, InitPlayout()).Times(0);
++  EXPECT_CALL(*adm, InitPlayout(_)).Times(0);
+   EXPECT_CALL(*adm, StartPlayout()).Times(0);
+   EXPECT_CALL(*adm, StopPlayout()).Times(1);
+   audio_state->SetPlayout(false);
+@@ -493,7 +493,7 @@ TEST_P(AudioStateTest, AlwaysCallInitPlayoutBeforeStartPlayout) {
+   MockAudioReceiveStream stream;
+   {
+     InSequence s;
+-    EXPECT_CALL(*adm, InitPlayout());
++    EXPECT_CALL(*adm, InitPlayout(_));
+     EXPECT_CALL(*adm, StartPlayout());
+     audio_state->AddReceivingStream(&stream);
+   }
+@@ -506,7 +506,7 @@ TEST_P(AudioStateTest, AlwaysCallInitPlayoutBeforeStartPlayout) {
+ 
+   {
+     InSequence s;
+-    EXPECT_CALL(*adm, InitPlayout());
++    EXPECT_CALL(*adm, InitPlayout(_));
+     EXPECT_CALL(*adm, StartPlayout());
+     audio_state->SetPlayout(true);
+   }
+diff --git a/audio/voip/test/voip_core_unittest.cc b/audio/voip/test/voip_core_unittest.cc
+index c651778359..aec537863a 100644
+--- a/audio/voip/test/voip_core_unittest.cc
++++ b/audio/voip/test/voip_core_unittest.cc
+@@ -32,6 +32,7 @@
+ namespace webrtc {
+ namespace {
+ 
++using ::testing::_;
+ using ::testing::NiceMock;
+ using ::testing::Return;
+ 
+@@ -69,8 +70,8 @@ TEST_F(VoipCoreTest, BasicVoipCoreOperation) {
+   // Program mock as non-operational and ready to start.
+   EXPECT_CALL(*audio_device_, Recording()).WillOnce(Return(false));
+   EXPECT_CALL(*audio_device_, Playing()).WillOnce(Return(false));
+-  EXPECT_CALL(*audio_device_, InitRecording()).WillOnce(Return(0));
+-  EXPECT_CALL(*audio_device_, InitPlayout()).WillOnce(Return(0));
++  EXPECT_CALL(*audio_device_, InitRecording(_)).WillOnce(Return(0));
++  EXPECT_CALL(*audio_device_, InitPlayout(_)).WillOnce(Return(0));
+   EXPECT_CALL(*audio_device_, StartRecording()).WillOnce(Return(0));
+   EXPECT_CALL(*audio_device_, StartPlayout()).WillOnce(Return(0));
+ 
+@@ -130,7 +131,7 @@ TEST_F(VoipCoreTest, ExpectFailToUseReleasedChannelId) {
+ TEST_F(VoipCoreTest, SendDtmfEventWithoutRegistering) {
+   // Program mock as non-operational and ready to start send.
+   EXPECT_CALL(*audio_device_, Recording()).WillOnce(Return(false));
+-  EXPECT_CALL(*audio_device_, InitRecording()).WillOnce(Return(0));
++  EXPECT_CALL(*audio_device_, InitRecording(_)).WillOnce(Return(0));
+   EXPECT_CALL(*audio_device_, StartRecording()).WillOnce(Return(0));
+ 
+   auto channel = voip_core_->CreateChannel(&transport_, 0xdeadc0de);
+diff --git a/media/engine/webrtc_voice_engine_unittest.cc b/media/engine/webrtc_voice_engine_unittest.cc
+index 6b6c99416c..0a2cbd7554 100644
+--- a/media/engine/webrtc_voice_engine_unittest.cc
++++ b/media/engine/webrtc_voice_engine_unittest.cc
+@@ -406,7 +406,7 @@ class WebRtcVoiceEngineTestFake : public ::testing::TestWithParam<bool> {
+       EXPECT_CALL(*adm_, Recording())
+           .Times(::testing::AtMost(1))
+           .WillOnce(Return(false));
+-      EXPECT_CALL(*adm_, InitRecording())
++      EXPECT_CALL(*adm_, InitRecording(_))
+           .Times(::testing::AtMost(1))
+           .WillOnce(Return(0));
+     }
+@@ -3266,7 +3266,7 @@ TEST_P(WebRtcVoiceEngineTestFake, SetAudioOptions) {
+ TEST_P(WebRtcVoiceEngineTestFake, InitRecordingOnSend) {
+   EXPECT_CALL(*adm_, RecordingIsInitialized()).WillOnce(Return(false));
+   EXPECT_CALL(*adm_, Recording()).WillOnce(Return(false));
+-  EXPECT_CALL(*adm_, InitRecording()).Times(1);
++  EXPECT_CALL(*adm_, InitRecording(_)).Times(1);
+ 
+   std::unique_ptr<webrtc::VoiceMediaSendChannelInterface> send_channel(
+       engine_->CreateSendChannel(
+@@ -3279,7 +3279,7 @@ TEST_P(WebRtcVoiceEngineTestFake, InitRecordingOnSend) {
+ TEST_P(WebRtcVoiceEngineTestFake, SkipInitRecordingOnSend) {
+   EXPECT_CALL(*adm_, RecordingIsInitialized()).Times(0);
+   EXPECT_CALL(*adm_, Recording()).Times(0);
+-  EXPECT_CALL(*adm_, InitRecording()).Times(0);
++  EXPECT_CALL(*adm_, InitRecording(_)).Times(0);
+ 
+   webrtc::AudioOptions options;
+   options.init_recording_on_send = false;
+@@ -3308,7 +3308,7 @@ TEST_P(WebRtcVoiceEngineTestFake, SetOptionOverridesViaChannels) {
+       .WillRepeatedly(Return(false));
+ 
+   EXPECT_CALL(*adm_, Recording()).Times(2).WillRepeatedly(Return(false));
+-  EXPECT_CALL(*adm_, InitRecording()).Times(2).WillRepeatedly(Return(0));
++  EXPECT_CALL(*adm_, InitRecording(_)).Times(2).WillRepeatedly(Return(0));
+ 
+   std::unique_ptr<webrtc::VoiceMediaSendChannelInterface> send_channel1(
+       engine_->CreateSendChannel(
+diff --git a/modules/audio_device/audio_device_data_observer.cc b/modules/audio_device/audio_device_data_observer.cc
+index 030f8140f0..9c58d28c54 100644
+--- a/modules/audio_device/audio_device_data_observer.cc
++++ b/modules/audio_device/audio_device_data_observer.cc
+@@ -173,14 +173,18 @@ class ADMWrapper : public AudioDeviceModule, public AudioTransport {
+   int32_t PlayoutIsAvailable(bool* available) override {
+     return impl_->PlayoutIsAvailable(available);
+   }
+-  int32_t InitPlayout() override { return impl_->InitPlayout(); }
++  int32_t InitPlayout(AudioCategory category = AudioCategory::kMedia) override {
++    return impl_->InitPlayout(category);
++  }
+   bool PlayoutIsInitialized() const override {
+     return impl_->PlayoutIsInitialized();
+   }
+   int32_t RecordingIsAvailable(bool* available) override {
+     return impl_->RecordingIsAvailable(available);
+   }
+-  int32_t InitRecording() override { return impl_->InitRecording(); }
++  int32_t InitRecording(AudioCategory category = AudioCategory::kMedia) override {
++    return impl_->InitRecording(category);
++  }
+   bool RecordingIsInitialized() const override {
+     return impl_->RecordingIsInitialized();
+   }
+diff --git a/modules/audio_device/audio_device_generic.h b/modules/audio_device/audio_device_generic.h
+index 2b12f03794..564e8aaaaa 100644
+--- a/modules/audio_device/audio_device_generic.h
++++ b/modules/audio_device/audio_device_generic.h
+@@ -60,10 +60,14 @@ class AudioDeviceGeneric {
+ 
+   // Audio transport initialization
+   virtual int32_t PlayoutIsAvailable(bool& available) = 0;
+-  virtual int32_t InitPlayout() = 0;
++  virtual int32_t InitPlayout(
++      AudioDeviceModule::AudioCategory category =
++          AudioDeviceModule::AudioCategory::kMedia) = 0;
+   virtual bool PlayoutIsInitialized() const = 0;
+   virtual int32_t RecordingIsAvailable(bool& available) = 0;
+-  virtual int32_t InitRecording() = 0;
++  virtual int32_t InitRecording(
++      AudioDeviceModule::AudioCategory category =
++          AudioDeviceModule::AudioCategory::kMedia) = 0;
+   virtual bool RecordingIsInitialized() const = 0;
+ 
+   // Audio transport control
+diff --git a/modules/audio_device/audio_device_impl.cc b/modules/audio_device/audio_device_impl.cc
+index 4757e8c0a1..6d69923b3a 100644
+--- a/modules/audio_device/audio_device_impl.cc
++++ b/modules/audio_device/audio_device_impl.cc
+@@ -710,26 +710,28 @@ int32_t AudioDeviceModuleImpl::SetRecordingDevice(WindowsDeviceType device) {
+   return audio_device_->SetRecordingDevice(device);
+ }
+ 
+-int32_t AudioDeviceModuleImpl::InitPlayout() {
++int32_t AudioDeviceModuleImpl::InitPlayout(
++    AudioDeviceModule::AudioCategory category) {
+   RTC_LOG(LS_INFO) << __FUNCTION__;
+   CHECKinitialized_();
+   if (PlayoutIsInitialized()) {
+     return 0;
+   }
+-  int32_t result = audio_device_->InitPlayout();
++  int32_t result = audio_device_->InitPlayout(category);
+   RTC_LOG(LS_INFO) << "output: " << result;
+   RTC_HISTOGRAM_BOOLEAN("WebRTC.Audio.InitPlayoutSuccess",
+                         static_cast<int>(result == 0));
+   return result;
+ }
+ 
+-int32_t AudioDeviceModuleImpl::InitRecording() {
++int32_t AudioDeviceModuleImpl::InitRecording(
++    AudioDeviceModule::AudioCategory category) {
+   RTC_LOG(LS_INFO) << __FUNCTION__;
+   CHECKinitialized_();
+   if (RecordingIsInitialized()) {
+     return 0;
+   }
+-  int32_t result = audio_device_->InitRecording();
++  int32_t result = audio_device_->InitRecording(category);
+   RTC_LOG(LS_INFO) << "output: " << result;
+   RTC_HISTOGRAM_BOOLEAN("WebRTC.Audio.InitRecordingSuccess",
+                         static_cast<int>(result == 0));
+diff --git a/modules/audio_device/audio_device_impl.h b/modules/audio_device/audio_device_impl.h
+index e37da2b536..b40dcefd6b 100644
+--- a/modules/audio_device/audio_device_impl.h
++++ b/modules/audio_device/audio_device_impl.h
+@@ -93,10 +93,12 @@ class AudioDeviceModuleImpl : public AudioDeviceModuleForTest {
+ 
+   // Audio transport initialization
+   int32_t PlayoutIsAvailable(bool* available) override;
+-  int32_t InitPlayout() override;
++  int32_t InitPlayout(AudioDeviceModule::AudioCategory category =
++                          AudioDeviceModule::AudioCategory::kMedia) override;
+   bool PlayoutIsInitialized() const override;
+   int32_t RecordingIsAvailable(bool* available) override;
+-  int32_t InitRecording() override;
++  int32_t InitRecording(AudioDeviceModule::AudioCategory category =
++                            AudioDeviceModule::AudioCategory::kMedia) override;
+   bool RecordingIsInitialized() const override;
+ 
+   // Audio transport control
+diff --git a/modules/audio_device/audio_engine_device.h b/modules/audio_device/audio_engine_device.h
+index 7cac7f4486..5b4edbcb6f 100644
+--- a/modules/audio_device/audio_engine_device.h
++++ b/modules/audio_device/audio_engine_device.h
+@@ -262,10 +262,12 @@ class AudioEngineDevice : public AudioDeviceModule, public AudioSessionObserver
+   int32_t Terminate() override;
+   bool Initialized() const override;
+ 
+-  int32_t InitPlayout() override;
++  int32_t InitPlayout(AudioDeviceModule::AudioCategory category =
++                          AudioDeviceModule::AudioCategory::kMedia) override;
+   bool PlayoutIsInitialized() const override;
+ 
+-  int32_t InitRecording() override;
++  int32_t InitRecording(AudioDeviceModule::AudioCategory category =
++                            AudioDeviceModule::AudioCategory::kMedia) override;
+   bool RecordingIsInitialized() const override;
+ 
+   int32_t StartPlayout() override;
+diff --git a/modules/audio_device/audio_engine_device.mm b/modules/audio_device/audio_engine_device.mm
+index 7e2339cc44..5926f64e14 100644
+--- a/modules/audio_device/audio_engine_device.mm
++++ b/modules/audio_device/audio_engine_device.mm
+@@ -377,7 +377,8 @@ bool AudioEngineDevice::Playing() const {
+   return engine_state_.output_running;
+ }
+ 
+-int32_t AudioEngineDevice::InitPlayout() {
++int32_t AudioEngineDevice::InitPlayout(
++    AudioDeviceModule::AudioCategory /* category */) {
+   LOGI() << "InitPlayout";
+   RTC_DCHECK_RUN_ON(thread_);
+   RTC_DCHECK(initialized_);
+@@ -432,7 +433,8 @@ bool AudioEngineDevice::Recording() const {
+   return engine_state_.input_running;
+ }
+ 
+-int32_t AudioEngineDevice::InitRecording() {
++int32_t AudioEngineDevice::InitRecording(
++    AudioDeviceModule::AudioCategory /* category */) {
+   LOGI() << "InitRecording";
+   RTC_DCHECK_RUN_ON(thread_);
+   RTC_DCHECK(initialized_);
+diff --git a/modules/audio_device/dummy/audio_device_dummy.cc b/modules/audio_device/dummy/audio_device_dummy.cc
+index 2e0304d41e..8b4b0f2957 100644
+--- a/modules/audio_device/dummy/audio_device_dummy.cc
++++ b/modules/audio_device/dummy/audio_device_dummy.cc
+@@ -80,7 +80,8 @@ int32_t AudioDeviceDummy::PlayoutIsAvailable(bool& /* available */) {
+   return -1;
+ }
+ 
+-int32_t AudioDeviceDummy::InitPlayout() {
++int32_t AudioDeviceDummy::InitPlayout(
++    AudioDeviceModule::AudioCategory /* category */) {
+   return -1;
+ }
+ 
+@@ -92,7 +93,8 @@ int32_t AudioDeviceDummy::RecordingIsAvailable(bool& /* available */) {
+   return -1;
+ }
+ 
+-int32_t AudioDeviceDummy::InitRecording() {
++int32_t AudioDeviceDummy::InitRecording(
++    AudioDeviceModule::AudioCategory /* category */) {
+   return -1;
+ }
+ 
+diff --git a/modules/audio_device/dummy/audio_device_dummy.h b/modules/audio_device/dummy/audio_device_dummy.h
+index f7dc46557b..daa01b0e06 100644
+--- a/modules/audio_device/dummy/audio_device_dummy.h
++++ b/modules/audio_device/dummy/audio_device_dummy.h
+@@ -54,10 +54,12 @@ class AudioDeviceDummy : public AudioDeviceGeneric {
+ 
+   // Audio transport initialization
+   int32_t PlayoutIsAvailable(bool& available) override;
+-  int32_t InitPlayout() override;
++  int32_t InitPlayout(AudioDeviceModule::AudioCategory category =
++                          AudioDeviceModule::AudioCategory::kMedia) override;
+   bool PlayoutIsInitialized() const override;
+   int32_t RecordingIsAvailable(bool& available) override;
+-  int32_t InitRecording() override;
++  int32_t InitRecording(AudioDeviceModule::AudioCategory category =
++                            AudioDeviceModule::AudioCategory::kMedia) override;
+   bool RecordingIsInitialized() const override;
+ 
+   // Audio transport control
+diff --git a/modules/audio_device/dummy/file_audio_device.cc b/modules/audio_device/dummy/file_audio_device.cc
+index 5accba9ad2..c94d37806c 100644
+--- a/modules/audio_device/dummy/file_audio_device.cc
++++ b/modules/audio_device/dummy/file_audio_device.cc
+@@ -149,7 +149,8 @@ int32_t FileAudioDevice::PlayoutIsAvailable(bool& available) {
+   return -1;
+ }
+ 
+-int32_t FileAudioDevice::InitPlayout() {
++int32_t FileAudioDevice::InitPlayout(
++    AudioDeviceModule::AudioCategory /* category */) {
+   MutexLock lock(&mutex_);
+ 
+   if (_playing) {
+@@ -179,7 +180,8 @@ int32_t FileAudioDevice::RecordingIsAvailable(bool& available) {
+   return -1;
+ }
+ 
+-int32_t FileAudioDevice::InitRecording() {
++int32_t FileAudioDevice::InitRecording(
++    AudioDeviceModule::AudioCategory /* category */) {
+   MutexLock lock(&mutex_);
+ 
+   if (_recording) {
+diff --git a/modules/audio_device/dummy/file_audio_device.h b/modules/audio_device/dummy/file_audio_device.h
+index 0fdd61a759..1e17eb1f83 100644
+--- a/modules/audio_device/dummy/file_audio_device.h
++++ b/modules/audio_device/dummy/file_audio_device.h
+@@ -71,10 +71,12 @@ class FileAudioDevice : public AudioDeviceGeneric {
+ 
+   // Audio transport initialization
+   int32_t PlayoutIsAvailable(bool& available) override;
+-  int32_t InitPlayout() override;
++  int32_t InitPlayout(AudioDeviceModule::AudioCategory category =
++                          AudioDeviceModule::AudioCategory::kMedia) override;
+   bool PlayoutIsInitialized() const override;
+   int32_t RecordingIsAvailable(bool& available) override;
+-  int32_t InitRecording() override;
++  int32_t InitRecording(AudioDeviceModule::AudioCategory category =
++                            AudioDeviceModule::AudioCategory::kMedia) override;
+   bool RecordingIsInitialized() const override;
+ 
+   // Audio transport control
+diff --git a/modules/audio_device/include/audio_device_default.h b/modules/audio_device/include/audio_device_default.h
+index 33cd88e21e..fc61437390 100644
+--- a/modules/audio_device/include/audio_device_default.h
++++ b/modules/audio_device/include/audio_device_default.h
+@@ -69,10 +69,16 @@ class AudioDeviceModuleDefault : public T {
+     return 0;
+   }
+   int32_t PlayoutIsAvailable(bool* /* available */) override { return 0; }
+-  int32_t InitPlayout() override { return 0; }
++  int32_t InitPlayout(
++      AudioCategory /* category */ = AudioCategory::kMedia) override {
++    return 0;
++  }
+   bool PlayoutIsInitialized() const override { return true; }
+   int32_t RecordingIsAvailable(bool* /* available */) override { return 0; }
+-  int32_t InitRecording() override { return 0; }
++  int32_t InitRecording(
++      AudioCategory /* category */ = AudioCategory::kMedia) override {
++    return 0;
++  }
+   bool RecordingIsInitialized() const override { return true; }
+   int32_t StartPlayout() override { return 0; }
+   bool Playing() const override { return false; }
+diff --git a/modules/audio_device/linux/audio_device_alsa_linux.cc b/modules/audio_device/linux/audio_device_alsa_linux.cc
+index 4e504f354d..9f3e0e5348 100644
+--- a/modules/audio_device/linux/audio_device_alsa_linux.cc
++++ b/modules/audio_device/linux/audio_device_alsa_linux.cc
+@@ -751,7 +751,8 @@ int32_t AudioDeviceLinuxALSA::RecordingIsAvailable(bool& available) {
+   return res;
+ }
+ 
+-int32_t AudioDeviceLinuxALSA::InitPlayout() {
++int32_t AudioDeviceLinuxALSA::InitPlayout(
++    AudioDeviceModule::AudioCategory /* category */) {
+   MutexLock lock(&mutex_);
+   return InitPlayoutLocked();
+ }
+@@ -872,7 +873,8 @@ int32_t AudioDeviceLinuxALSA::InitPlayoutLocked() {
+   }
+ }
+ 
+-int32_t AudioDeviceLinuxALSA::InitRecording() {
++int32_t AudioDeviceLinuxALSA::InitRecording(
++    AudioDeviceModule::AudioCategory /* category */) {
+   MutexLock lock(&mutex_);
+   return InitRecordingLocked();
+ }
+diff --git a/modules/audio_device/linux/audio_device_alsa_linux.h b/modules/audio_device/linux/audio_device_alsa_linux.h
+index cb7c68ebe9..8aa65421d4 100644
+--- a/modules/audio_device/linux/audio_device_alsa_linux.h
++++ b/modules/audio_device/linux/audio_device_alsa_linux.h
+@@ -72,10 +72,14 @@ class AudioDeviceLinuxALSA : public AudioDeviceGeneric {
+ 
+   // Audio transport initialization
+   int32_t PlayoutIsAvailable(bool& available) override;
+-  int32_t InitPlayout() RTC_LOCKS_EXCLUDED(mutex_) override;
++  int32_t InitPlayout(AudioDeviceModule::AudioCategory category =
++                          AudioDeviceModule::AudioCategory::kMedia)
++      RTC_LOCKS_EXCLUDED(mutex_) override;
+   bool PlayoutIsInitialized() const override;
+   int32_t RecordingIsAvailable(bool& available) override;
+-  int32_t InitRecording() RTC_LOCKS_EXCLUDED(mutex_) override;
++  int32_t InitRecording(AudioDeviceModule::AudioCategory category =
++                            AudioDeviceModule::AudioCategory::kMedia)
++      RTC_LOCKS_EXCLUDED(mutex_) override;
+   bool RecordingIsInitialized() const override;
+ 
+   // Audio transport control
+diff --git a/modules/audio_device/linux/audio_device_pulse_linux.cc b/modules/audio_device/linux/audio_device_pulse_linux.cc
+index b7935934a3..9d0aea6f49 100644
+--- a/modules/audio_device/linux/audio_device_pulse_linux.cc
++++ b/modules/audio_device/linux/audio_device_pulse_linux.cc
+@@ -868,7 +868,8 @@ int32_t AudioDeviceLinuxPulse::RecordingIsAvailable(bool& available) {
+   return res;
+ }
+ 
+-int32_t AudioDeviceLinuxPulse::InitPlayout() {
++int32_t AudioDeviceLinuxPulse::InitPlayout(
++    AudioDeviceModule::AudioCategory /* category */) {
+   RTC_DCHECK(thread_checker_.IsCurrent());
+ 
+   if (_playing) {
+@@ -977,7 +978,8 @@ int32_t AudioDeviceLinuxPulse::InitPlayout() {
+   return 0;
+ }
+ 
+-int32_t AudioDeviceLinuxPulse::InitRecording() {
++int32_t AudioDeviceLinuxPulse::InitRecording(
++    AudioDeviceModule::AudioCategory /* category */) {
+   RTC_DCHECK(thread_checker_.IsCurrent());
+ 
+   if (_recording) {
+diff --git a/modules/audio_device/linux/audio_device_pulse_linux.h b/modules/audio_device/linux/audio_device_pulse_linux.h
+index b55b5502d9..2b8da4ce08 100644
+--- a/modules/audio_device/linux/audio_device_pulse_linux.h
++++ b/modules/audio_device/linux/audio_device_pulse_linux.h
+@@ -138,10 +138,13 @@ class AudioDeviceLinuxPulse : public AudioDeviceGeneric {
+ 
+   // Audio transport initialization
+   int32_t PlayoutIsAvailable(bool& available) override;
+-  int32_t InitPlayout() RTC_LOCKS_EXCLUDED(mutex_) override;
++  int32_t InitPlayout(AudioDeviceModule::AudioCategory category =
++                          AudioDeviceModule::AudioCategory::kMedia)
++      RTC_LOCKS_EXCLUDED(mutex_) override;
+   bool PlayoutIsInitialized() const override;
+   int32_t RecordingIsAvailable(bool& available) override;
+-  int32_t InitRecording() override;
++  int32_t InitRecording(AudioDeviceModule::AudioCategory category =
++                            AudioDeviceModule::AudioCategory::kMedia) override;
+   bool RecordingIsInitialized() const override;
+ 
+   // Audio transport control
+diff --git a/modules/audio_device/mac/audio_device_mac.h b/modules/audio_device/mac/audio_device_mac.h
+index 6ccc26cc2f..cd3202844f 100644
+--- a/modules/audio_device/mac/audio_device_mac.h
++++ b/modules/audio_device/mac/audio_device_mac.h
+@@ -91,10 +91,14 @@ class AudioDeviceMac : public AudioDeviceGeneric {
+ 
+   // Audio transport initialization
+   virtual int32_t PlayoutIsAvailable(bool& available);
+-  virtual int32_t InitPlayout() RTC_LOCKS_EXCLUDED(mutex_);
++  virtual int32_t InitPlayout(AudioDeviceModule::AudioCategory category =
++                                  AudioDeviceModule::AudioCategory::kMedia)
++      RTC_LOCKS_EXCLUDED(mutex_);
+   virtual bool PlayoutIsInitialized() const;
+   virtual int32_t RecordingIsAvailable(bool& available);
+-  virtual int32_t InitRecording() RTC_LOCKS_EXCLUDED(mutex_);
++  virtual int32_t InitRecording(AudioDeviceModule::AudioCategory category =
++                                    AudioDeviceModule::AudioCategory::kMedia)
++      RTC_LOCKS_EXCLUDED(mutex_);
+   virtual bool RecordingIsInitialized() const;
+ 
+   // Audio transport control
+diff --git a/modules/audio_device/test_audio_device_impl.cc b/modules/audio_device/test_audio_device_impl.cc
+index 80402d3ea3..36e4e4b327 100644
+--- a/modules/audio_device/test_audio_device_impl.cc
++++ b/modules/audio_device/test_audio_device_impl.cc
+@@ -79,7 +79,8 @@ int32_t TestAudioDevice::PlayoutIsAvailable(bool& available) {
+   return 0;
+ }
+ 
+-int32_t TestAudioDevice::InitPlayout() {
++int32_t TestAudioDevice::InitPlayout(
++    AudioDeviceModule::AudioCategory /* category */) {
+   MutexLock lock(&lock_);
+ 
+   if (rendering_) {
+@@ -119,7 +120,8 @@ int32_t TestAudioDevice::RecordingIsAvailable(bool& available) {
+   return 0;
+ }
+ 
+-int32_t TestAudioDevice::InitRecording() {
++int32_t TestAudioDevice::InitRecording(
++    AudioDeviceModule::AudioCategory /* category */) {
+   MutexLock lock(&lock_);
+ 
+   if (capturing_) {
+diff --git a/modules/audio_device/test_audio_device_impl.h b/modules/audio_device/test_audio_device_impl.h
+index d8ebb7d623..2d4335ab86 100644
+--- a/modules/audio_device/test_audio_device_impl.h
++++ b/modules/audio_device/test_audio_device_impl.h
+@@ -83,10 +83,12 @@ class TestAudioDevice : public AudioDeviceGeneric {
+ 
+   // Audio transport initialization
+   int32_t PlayoutIsAvailable(bool& available) override;
+-  int32_t InitPlayout() override;
++  int32_t InitPlayout(AudioDeviceModule::AudioCategory category =
++                          AudioDeviceModule::AudioCategory::kMedia) override;
+   bool PlayoutIsInitialized() const override;
+   int32_t RecordingIsAvailable(bool& available) override;
+-  int32_t InitRecording() override;
++  int32_t InitRecording(AudioDeviceModule::AudioCategory category =
++                            AudioDeviceModule::AudioCategory::kMedia) override;
+   bool RecordingIsInitialized() const override;
+ 
+   // Audio transport control
+diff --git a/modules/audio_device/win/audio_device_core_win.h b/modules/audio_device/win/audio_device_core_win.h
+index c7194e69e7..f7a6f88fe5 100644
+--- a/modules/audio_device/win/audio_device_core_win.h
++++ b/modules/audio_device/win/audio_device_core_win.h
+@@ -110,10 +110,14 @@ class AudioDeviceWindowsCore : public AudioDeviceGeneric {
+ 
+   // Audio transport initialization
+   virtual int32_t PlayoutIsAvailable(bool& available);
+-  virtual int32_t InitPlayout() RTC_LOCKS_EXCLUDED(mutex_);
++  virtual int32_t InitPlayout(AudioDeviceModule::AudioCategory category =
++                                  AudioDeviceModule::AudioCategory::kMedia)
++      RTC_LOCKS_EXCLUDED(mutex_);
+   virtual bool PlayoutIsInitialized() const;
+   virtual int32_t RecordingIsAvailable(bool& available);
+-  virtual int32_t InitRecording() RTC_LOCKS_EXCLUDED(mutex_);
++  virtual int32_t InitRecording(AudioDeviceModule::AudioCategory category =
++                                    AudioDeviceModule::AudioCategory::kMedia)
++      RTC_LOCKS_EXCLUDED(mutex_);
+   virtual bool RecordingIsInitialized() const;
+ 
+   // Audio transport control
+@@ -272,6 +276,13 @@ class AudioDeviceWindowsCore : public AudioDeviceGeneric {
+   scoped_refptr<IMediaObject> _dmo;
+   scoped_refptr<IMediaBuffer> _mediaBuffer;
+   bool _builtInAecEnabled;
++  // Categories applied to the render and capture streams, set by the most
++  // recent InitPlayout() and InitRecording() calls. Reused when the device
++  // re-initializes on its own (e.g. PlayoutIsAvailable()).
++  AudioDeviceModule::AudioCategory _playCategory =
++      AudioDeviceModule::AudioCategory::kMedia;
++  AudioDeviceModule::AudioCategory _recCategory =
++      AudioDeviceModule::AudioCategory::kMedia;
+ 
+   HANDLE _hRenderSamplesReadyEvent;
+   HANDLE _hPlayThread;
+diff --git a/modules/audio_device/win/audio_device_module_win.cc b/modules/audio_device/win/audio_device_module_win.cc
+index 7fd3a9f3da..16348597d3 100644
+--- a/modules/audio_device/win/audio_device_module_win.cc
++++ b/modules/audio_device/win/audio_device_module_win.cc
+@@ -254,7 +254,9 @@ class WindowsAudioDeviceModule : public AudioDeviceModuleForTest {
+     return 0;
+   }
+ 
+-  int32_t InitPlayout() override {
++  // The category is only supported by the legacy kWindowsCoreAudio ADM.
++  int32_t InitPlayout(
++      AudioCategory /* category */ = AudioCategory::kMedia) override {
+     RTC_DLOG(LS_INFO) << __FUNCTION__;
+     RTC_DCHECK_RUN_ON(&thread_checker_);
+     RETURN_IF_OUTPUT_RESTARTS(0);
+@@ -276,7 +278,9 @@ class WindowsAudioDeviceModule : public AudioDeviceModuleForTest {
+     return 0;
+   }
+ 
+-  int32_t InitRecording() override {
++  // The category is only supported by the legacy kWindowsCoreAudio ADM.
++  int32_t InitRecording(
++      AudioCategory /* category */ = AudioCategory::kMedia) override {
+     RTC_DLOG(LS_INFO) << __FUNCTION__;
+     RTC_DCHECK_RUN_ON(&thread_checker_);
+     RETURN_IF_INPUT_RESTARTS(0);
+diff --git a/pc/test/fake_audio_capture_module.cc b/pc/test/fake_audio_capture_module.cc
+index e55a8af65e..53083532c0 100644
+--- a/pc/test/fake_audio_capture_module.cc
++++ b/pc/test/fake_audio_capture_module.cc
+@@ -157,7 +157,8 @@ int32_t FakeAudioCaptureModule::PlayoutIsAvailable(bool* /*available*/) {
+   return 0;
+ }
+ 
+-int32_t FakeAudioCaptureModule::InitPlayout() {
++int32_t FakeAudioCaptureModule::InitPlayout(
++    AudioDeviceModule::AudioCategory /* category */) {
+   play_is_initialized_ = true;
+   return 0;
+ }
+@@ -171,7 +172,8 @@ int32_t FakeAudioCaptureModule::RecordingIsAvailable(bool* /*available*/) {
+   return 0;
+ }
+ 
+-int32_t FakeAudioCaptureModule::InitRecording() {
++int32_t FakeAudioCaptureModule::InitRecording(
++    AudioDeviceModule::AudioCategory /* category */) {
+   rec_is_initialized_ = true;
+   return 0;
+ }
+diff --git a/sdk/android/src/jni/audio_device/audio_device_module.cc b/sdk/android/src/jni/audio_device/audio_device_module.cc
+index 4ab601481c..e0f1a582b7 100644
+--- a/sdk/android/src/jni/audio_device/audio_device_module.cc
++++ b/sdk/android/src/jni/audio_device/audio_device_module.cc
+@@ -203,7 +203,8 @@ class AndroidAudioDeviceModule : public AudioDeviceModule {
+     return 0;
+   }
+ 
+-  int32_t InitPlayout() override {
++  int32_t InitPlayout(
++      AudioCategory /* category */ = AudioCategory::kMedia) override {
+     RTC_DLOG(LS_INFO) << __FUNCTION__;
+     if (!initialized_)
+       return -1;
+@@ -229,7 +230,8 @@ class AndroidAudioDeviceModule : public AudioDeviceModule {
+     return 0;
+   }
+ 
+-  int32_t InitRecording() override {
++  int32_t InitRecording(
++      AudioCategory /* category */ = AudioCategory::kMedia) override {
+     RTC_DLOG(LS_INFO) << __FUNCTION__;
+     if (!initialized_)
+       return -1;
+diff --git a/sdk/objc/native/src/audio/audio_device_ios.h b/sdk/objc/native/src/audio/audio_device_ios.h
+index f6e9e81adc..6f6725c0fb 100644
+--- a/sdk/objc/native/src/audio/audio_device_ios.h
++++ b/sdk/objc/native/src/audio/audio_device_ios.h
+@@ -69,10 +69,12 @@ class AudioDeviceIOS : public AudioDeviceGeneric,
+   int32_t Terminate() override;
+   bool Initialized() const override;
+ 
+-  int32_t InitPlayout() override;
++  int32_t InitPlayout(AudioDeviceModule::AudioCategory category =
++                          AudioDeviceModule::AudioCategory::kMedia) override;
+   bool PlayoutIsInitialized() const override;
+ 
+-  int32_t InitRecording() override;
++  int32_t InitRecording(AudioDeviceModule::AudioCategory category =
++                            AudioDeviceModule::AudioCategory::kMedia) override;
+   bool RecordingIsInitialized() const override;
+ 
+   int32_t StartPlayout() override;
+diff --git a/sdk/objc/native/src/audio/audio_device_ios.mm b/sdk/objc/native/src/audio/audio_device_ios.mm
+index 059cbf68fd..e22c8d8636 100644
+--- a/sdk/objc/native/src/audio/audio_device_ios.mm
++++ b/sdk/objc/native/src/audio/audio_device_ios.mm
+@@ -195,7 +195,8 @@ bool AudioDeviceIOS::Initialized() const {
+   return initialized_;
+ }
+ 
+-int32_t AudioDeviceIOS::InitPlayout() {
++int32_t AudioDeviceIOS::InitPlayout(
++    AudioDeviceModule::AudioCategory /* category */) {
+   LOGI() << "InitPlayout";
+   RTC_DCHECK_RUN_ON(thread_);
+   RTC_DCHECK(initialized_);
+@@ -224,7 +225,8 @@ bool AudioDeviceIOS::RecordingIsInitialized() const {
+   return recording_is_initialized_;
+ }
+ 
+-int32_t AudioDeviceIOS::InitRecording() {
++int32_t AudioDeviceIOS::InitRecording(
++    AudioDeviceModule::AudioCategory /* category */) {
+   LOGI() << "InitRecording";
+   RTC_DCHECK_RUN_ON(thread_);
+   RTC_DCHECK(initialized_);
+diff --git a/sdk/objc/native/src/audio/audio_device_module_ios.h b/sdk/objc/native/src/audio/audio_device_module_ios.h
+index 58d02a2fb1..05fc25ad01 100644
+--- a/sdk/objc/native/src/audio/audio_device_module_ios.h
++++ b/sdk/objc/native/src/audio/audio_device_module_ios.h
+@@ -65,10 +65,12 @@ class AudioDeviceModuleIOS : public AudioDeviceModule {
+ 
+   // Audio transport initialization
+   int32_t PlayoutIsAvailable(bool* available) override;
+-  int32_t InitPlayout() override;
++  int32_t InitPlayout(AudioDeviceModule::AudioCategory category =
++                          AudioDeviceModule::AudioCategory::kMedia) override;
+   bool PlayoutIsInitialized() const override;
+   int32_t RecordingIsAvailable(bool* available) override;
+-  int32_t InitRecording() override;
++  int32_t InitRecording(AudioDeviceModule::AudioCategory category =
++                            AudioDeviceModule::AudioCategory::kMedia) override;
+   bool RecordingIsInitialized() const override;
+ 
+   // Audio transport control
+diff --git a/sdk/objc/native/src/audio/audio_device_module_ios.mm b/sdk/objc/native/src/audio/audio_device_module_ios.mm
+index a0f4082578..e28bd7b02f 100644
+--- a/sdk/objc/native/src/audio/audio_device_module_ios.mm
++++ b/sdk/objc/native/src/audio/audio_device_module_ios.mm
+@@ -554,13 +554,14 @@ int32_t AudioDeviceModuleIOS::SetRecordingDevice(WindowsDeviceType device) {
+   return result;
+ }
+ 
+-int32_t AudioDeviceModuleIOS::InitPlayout() {
++int32_t AudioDeviceModuleIOS::InitPlayout(
++    AudioDeviceModule::AudioCategory category) {
+   RTC_DLOG(LS_INFO) << __FUNCTION__;
+   CHECKinitialized_();
+   if (PlayoutIsInitialized()) {
+     return 0;
+   }
+-  int32_t result = audio_device_->InitPlayout();
++  int32_t result = audio_device_->InitPlayout(category);
+   if (result < 0) {
+     ReportError(kPlayoutInitFailed);
+   }
+@@ -570,13 +571,14 @@ int32_t AudioDeviceModuleIOS::InitPlayout() {
+   return result;
+ }
+ 
+-int32_t AudioDeviceModuleIOS::InitRecording() {
++int32_t AudioDeviceModuleIOS::InitRecording(
++    AudioDeviceModule::AudioCategory category) {
+   RTC_DLOG(LS_INFO) << __FUNCTION__;
+   CHECKinitialized_();
+   if (RecordingIsInitialized()) {
+     return 0;
+   }
+-  int32_t result = audio_device_->InitRecording();
++  int32_t result = audio_device_->InitRecording(category);
+   if (result < 0) {
+     ReportError(kRecordingInitFailed);
+   }
+diff --git a/sdk/objc/native/src/objc_audio_device.h b/sdk/objc/native/src/objc_audio_device.h
+index e0ed401f7b..78e660524c 100644
+--- a/sdk/objc/native/src/objc_audio_device.h
++++ b/sdk/objc/native/src/objc_audio_device.h
+@@ -63,10 +63,12 @@ class ObjCAudioDeviceModule : public AudioDeviceModule {
+ 
+   // Audio transport initialization
+   int32_t PlayoutIsAvailable(bool* available) override;
+-  int32_t InitPlayout() override;
++  int32_t InitPlayout(AudioDeviceModule::AudioCategory category =
++                          AudioDeviceModule::AudioCategory::kMedia) override;
+   bool PlayoutIsInitialized() const override;
+   int32_t RecordingIsAvailable(bool* available) override;
+-  int32_t InitRecording() override;
++  int32_t InitRecording(AudioDeviceModule::AudioCategory category =
++                            AudioDeviceModule::AudioCategory::kMedia) override;
+   bool RecordingIsInitialized() const override;
+ 
+   // Audio transport control
+diff --git a/sdk/objc/native/src/objc_audio_device.mm b/sdk/objc/native/src/objc_audio_device.mm
+index b3a3510976..7061680191 100644
+--- a/sdk/objc/native/src/objc_audio_device.mm
++++ b/sdk/objc/native/src/objc_audio_device.mm
+@@ -163,7 +163,8 @@ bool ObjCAudioDeviceModule::PlayoutIsInitialized() const {
+       [audio_device_ isPlayoutInitialized];
+ }
+ 
+-int32_t ObjCAudioDeviceModule::InitPlayout() {
++int32_t ObjCAudioDeviceModule::InitPlayout(
++    AudioDeviceModule::AudioCategory /* category */) {
+   RTC_DLOG_F(LS_VERBOSE) << "";
+   RTC_DCHECK_RUN_ON(&thread_checker_);
+   if (!Initialized()) {
+@@ -258,7 +259,8 @@ bool ObjCAudioDeviceModule::RecordingIsInitialized() const {
+       [audio_device_ isRecordingInitialized];
+ }
+ 
+-int32_t ObjCAudioDeviceModule::InitRecording() {
++int32_t ObjCAudioDeviceModule::InitRecording(
++    AudioDeviceModule::AudioCategory /* category */) {
+   RTC_DLOG_F(LS_VERBOSE) << "";
+   RTC_DCHECK_RUN_ON(&thread_checker_);
+   if (!Initialized()) {
+diff --git a/modules/audio_device/win/audio_device_core_win.cc b/modules/audio_device/win/audio_device_core_win.cc
+index 5129b65..3e8892d 100644
+--- a/modules/audio_device/win/audio_device_core_win.cc
++++ b/modules/audio_device/win/audio_device_core_win.cc
+@@ -1797,7 +1797,7 @@ int32_t AudioDeviceWindowsCore::PlayoutIsAvailable(bool& available) {
+   available = false;
+ 
+   // Try to initialize the playout side
+-  int32_t res = InitPlayout();
++  int32_t res = InitPlayout(_playCategory);
+ 
+   // Cancel effect of initialization
+   StopPlayout();
+@@ -1817,7 +1817,7 @@ int32_t AudioDeviceWindowsCore::RecordingIsAvailable(bool& available) {
+   available = false;
+ 
+   // Try to initialize the recording side
+-  int32_t res = InitRecording();
++  int32_t res = InitRecording(_recCategory);
+ 
+   // Cancel effect of initialization
+   StopRecording();
+@@ -1833,7 +1833,8 @@ int32_t AudioDeviceWindowsCore::RecordingIsAvailable(bool& available) {
+ //  InitPlayout
+ // ----------------------------------------------------------------------------
+ 
+-int32_t AudioDeviceWindowsCore::InitPlayout() {
++int32_t AudioDeviceWindowsCore::InitPlayout(
++    AudioDeviceModule::AudioCategory category) {
+   MutexLock lock(&mutex_);
+ 
+   if (_playing) {
+@@ -1844,6 +1845,8 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
+     return 0;
+   }
+ 
++  _playCategory = category;
++
+   if (_ptrDeviceOut == NULL) {
+     return -1;
+   }
+@@ -1877,22 +1880,29 @@ int32_t AudioDeviceWindowsCore::InitPlayout() {
+                                (void**)&_ptrClientOut);
+   EXIT_ON_ERROR(hr);
+ 
+-  // Classify the render stream as Communications before it is initialized.
+-  // Marking the stream AudioCategory_Communications lets the system apply its
+-  // communications audio processing pipeline to the stream, which is what we
+-  // want for real-time calls. Must be done before IAudioClient::Initialize().
++  // Classify the render stream before it is initialized. AudioCategory_Media
++  // treats the stream as regular media playback (e.g. it does not by itself
++  // switch a Bluetooth headset into hands-free mode).
++  // AudioCategory_Communications lets the system apply its communications
++  // audio processing pipeline for real-time calls. Must be done before
++  // IAudioClient::Initialize().
+   {
+     IAudioClient2* client2 = nullptr;
+     hr = _ptrClientOut->QueryInterface(IID_PPV_ARGS(&client2));
+     if (SUCCEEDED(hr) && client2) {
++      const bool use_media_category =
++          category != AudioDeviceModule::AudioCategory::kCommunications;
+       AudioClientProperties props = {};
+       props.cbSize = sizeof(props);
+-      props.eCategory = AudioCategory_Communications;
++      props.eCategory = use_media_category ? AudioCategory_Media
++                                           : AudioCategory_Communications;
++      RTC_LOG(LS_INFO) << "Render stream category: "
++                       << (use_media_category ? "Media" : "Communications");
+       hr = client2->SetClientProperties(&props);
+       if (FAILED(hr)) {
+-        RTC_LOG(LS_WARNING)
+-            << "SetClientProperties(Communications) for render failed: 0x"
+-            << ToHex(hr);
++        RTC_LOG(LS_WARNING) << "SetClientProperties("
++                            << (use_media_category ? "Media" : "Communications")
++                            << ") for render failed: 0x" << ToHex(hr);
+       }
+       SAFE_RELEASE(client2);
+     }
+@@ -2189,7 +2199,8 @@ int32_t AudioDeviceWindowsCore::InitRecordingDMO() {
+ //  InitRecording
+ // ----------------------------------------------------------------------------
+ 
+-int32_t AudioDeviceWindowsCore::InitRecording() {
++int32_t AudioDeviceWindowsCore::InitRecording(
++    AudioDeviceModule::AudioCategory category) {
+   MutexLock lock(&mutex_);
+ 
+   if (_recording) {
+@@ -2200,6 +2211,8 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
+     return 0;
+   }
+ 
++  _recCategory = category;
++
+   if (QueryPerformanceFrequency(&_perfCounterFreq) == 0) {
+     return -1;
+   }
+@@ -2220,7 +2233,7 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
+   }
+ 
+   if (_builtInAecEnabled) {
+-    // The DMO will configure the capture device.
++    // The DMO will configure the capture device; `category` is not applied.
+     return InitRecordingDMO();
+   }
+ 
+@@ -2242,17 +2255,23 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
+   if (SUCCEEDED(hr) && client2) {
+     AudioClientProperties props = {};
+     props.cbSize = sizeof(props);
+-    // Use the Media category (not Communications) so that opening a capture
+-    // stream on the communications endpoint does not trigger the system to
+-    // duck other applications' audio.
+-    props.eCategory = AudioCategory_Communications;
++    // The Media category keeps the system from ducking other applications'
++    // audio while capturing. The Communications category marks the stream as
++    // a voice call, which enables the system's communications behavior
++    // (including ducking).
++    props.eCategory =
++        category == AudioDeviceModule::AudioCategory::kCommunications
++            ? AudioCategory_Communications
++            : AudioCategory_Media;
++    RTC_LOG(LS_INFO) << "Capture stream category: "
++                     << (props.eCategory == AudioCategory_Communications
++                             ? "Communications"
++                             : "Media");
+     // Prefer RAW mode, which bypasses OEM capture processing. It is only
+     // available on endpoints that advertise RawProcessingSupported, and when it
+     // is not, SetClientProperties() fails as a whole -- which would also drop
+-    // the Media category and let the stream fall back to communications
+-    // behavior (i.e. ducking returns). So if the RAW call fails, retry with
+-    // just the Media category to make sure the anti-ducking category still
+-    // applies.
++    // the category. So if the RAW call fails, retry with just the category to
++    // make sure it still applies.
+     hr = client2->SetClientProperties(&props);
+     if (FAILED(hr)) {
+       RTC_LOG(LS_WARNING) << "SetClientProperties() with RAW failed: 0x"
+@@ -2261,7 +2280,7 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
+       hr = client2->SetClientProperties(&props);
+       if (FAILED(hr)) {
+         RTC_LOG(LS_WARNING)
+-            << "SetClientProperties() for Media category failed: 0x"
++            << "SetClientProperties() for capture category failed: 0x"
+             << ToHex(hr);
+       }
+     }
+@@ -2344,11 +2363,18 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
+     if (hr == S_OK)
+       break;
+   }
+-  if (pInitWfxClosestMatch) {
++  if (hr != S_OK && pInitWfxClosestMatch) {
+     // Set up the closest match, and rely on the voice engine to resample.
+     // (roxanneskelly)
+-    CopyMemory(&Wfx, pInitWfxClosestMatch, sizeof(Wfx));
++    // Only the sample rate is taken from the closest match. Copying the whole
++    // struct would pick up the mix format's channel mask (e.g. stereo) and
++    // format tag (which may be IEEE float or a non-extensible WAVEFORMATEX),
++    // neither of which is consistent with the 16-bit mono PCM requested here.
++    Wfx.Format.wFormatTag = WAVE_FORMAT_EXTENSIBLE;
++    Wfx.Format.cbSize = 22;
++    Wfx.Format.nSamplesPerSec = pInitWfxClosestMatch->Format.nSamplesPerSec;
+     Wfx.SubFormat = KSDATAFORMAT_SUBTYPE_PCM;
++    Wfx.dwChannelMask = 0;
+     Wfx.Format.wBitsPerSample = 16;  // force it to 16 bits per sample
+     Wfx.Samples.wValidBitsPerSample = Wfx.Format.wBitsPerSample;
+     Wfx.Format.nChannels = 1;
+diff --git a/modules/audio_device/mac/audio_device_mac.cc b/modules/audio_device/mac/audio_device_mac.cc
+index cb702ab..2ec83ce 100644
+--- a/modules/audio_device/mac/audio_device_mac.cc
++++ b/modules/audio_device/mac/audio_device_mac.cc
+@@ -958,7 +958,8 @@ int32_t AudioDeviceMac::RecordingIsAvailable(bool& available) {
+   return 0;
+ }
+ 
+-int32_t AudioDeviceMac::InitPlayout() {
++int32_t AudioDeviceMac::InitPlayout(
++    AudioDeviceModule::AudioCategory /* category */) {
+   RTC_LOG(LS_INFO) << "InitPlayout";
+   MutexLock lock(&mutex_);
+ 
+@@ -1063,7 +1064,8 @@ int32_t AudioDeviceMac::InitPlayout() {
+   return 0;
+ }
+ 
+-int32_t AudioDeviceMac::InitRecording() {
++int32_t AudioDeviceMac::InitRecording(
++    AudioDeviceModule::AudioCategory /* category */) {
+   RTC_LOG(LS_INFO) << "InitRecording";
+   MutexLock lock(&mutex_);
+ 
+diff --git a/modules/audio_device/include/mock_audio_device.h b/modules/audio_device/include/mock_audio_device.h
+index 8a998a2..bc9a221 100644
+--- a/modules/audio_device/include/mock_audio_device.h
++++ b/modules/audio_device/include/mock_audio_device.h
+@@ -68,10 +68,10 @@ class MockAudioDeviceModule : public AudioDeviceModule {
+               (WindowsDeviceType device),
+               (override));
+   MOCK_METHOD(int32_t, PlayoutIsAvailable, (bool* available), (override));
+-  MOCK_METHOD(int32_t, InitPlayout, (), (override));
++  MOCK_METHOD(int32_t, InitPlayout, (AudioCategory), (override));
+   MOCK_METHOD(bool, PlayoutIsInitialized, (), (const, override));
+   MOCK_METHOD(int32_t, RecordingIsAvailable, (bool* available), (override));
+-  MOCK_METHOD(int32_t, InitRecording, (), (override));
++  MOCK_METHOD(int32_t, InitRecording, (AudioCategory), (override));
+   MOCK_METHOD(bool, RecordingIsInitialized, (), (const, override));
+   MOCK_METHOD(int32_t, StartPlayout, (), (override));
+   MOCK_METHOD(int32_t, StopPlayout, (), (override));
+diff --git a/pc/test/fake_audio_capture_module.h b/pc/test/fake_audio_capture_module.h
+index d14c49d..ea19668 100644
+--- a/pc/test/fake_audio_capture_module.h
++++ b/pc/test/fake_audio_capture_module.h
+@@ -76,10 +76,12 @@ class FakeAudioCaptureModule : public webrtc::AudioDeviceModule {
+   int32_t SetRecordingDevice(WindowsDeviceType device) override;
+ 
+   int32_t PlayoutIsAvailable(bool* available) override;
+-  int32_t InitPlayout() override;
++  int32_t InitPlayout(AudioDeviceModule::AudioCategory category =
++                          AudioDeviceModule::AudioCategory::kMedia) override;
+   bool PlayoutIsInitialized() const override;
+   int32_t RecordingIsAvailable(bool* available) override;
+-  int32_t InitRecording() override;
++  int32_t InitRecording(AudioDeviceModule::AudioCategory category =
++                            AudioDeviceModule::AudioCategory::kMedia) override;
+   bool RecordingIsInitialized() const override;
+ 
+   int32_t StartPlayout() RTC_LOCKS_EXCLUDED(mutex_) override;
