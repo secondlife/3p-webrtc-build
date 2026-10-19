@@ -1,7 +1,7 @@
 # syntax = docker/dockerfile:experimental
-FROM ubuntu:20.04 AS builder
+FROM ubuntu:22.04 AS builder
 
-ARG PACKAGE_NAME=ubuntu-18.04_armv8
+ARG PACKAGE_NAME=ubuntu-22.04_armv8
 ARG COMMIT_HASH=""
 
 ENV PACKAGE_DIR "/root/_package/$PACKAGE_NAME"
@@ -18,6 +18,6 @@ RUN cd /root && python3 run.py build $PACKAGE_NAME --commit "${COMMIT_HASH}"
 RUN cd /root && python3 run.py package $PACKAGE_NAME
 RUN mv $PACKAGE_DIR/webrtc.tar.gz /
 
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 COPY --from=builder /webrtc.tar.gz /

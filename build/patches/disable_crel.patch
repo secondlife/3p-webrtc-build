@@ -1,0 +1,18 @@
+diff -durN sdk/build/config/compiler/BUILD.gn sdk-patched/build/config/compiler/BUILD.gn
+--- sdk/build/config/compiler/BUILD.gn	2026-06-29 11:42:34.026237378 +0200
++++ sdk-patched/build/config/compiler/BUILD.gn	2026-06-29 11:50:06.907411585 +0200
+@@ -721,14 +721,6 @@
+     } else {
+       cflags += [ "-ffp-contract=off" ]
+     }
+-
+-    # Enable ELF CREL (see crbug.com/357878242) for all platforms that use ELF.
+-    # TODO(crbug.com/376278218): This causes segfault on Linux ARM builds.
+-    # It also causes segfault on Linux s390x:
+-    # https://github.com/llvm/llvm-project/issues/149511
+-    if (is_linux && use_lld && current_cpu != "arm" && current_cpu != "s390x") {
+-      cflags += [ "-Wa,--crel,--allow-experimental-crel" ]
+-    }
+   }
+ 
+   # C11/C++11 compiler flags setup.

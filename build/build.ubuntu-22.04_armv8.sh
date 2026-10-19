@@ -4,7 +4,7 @@ cd `dirname $0`
 source VERSION
 SCRIPT_DIR="`pwd`"
 
-PACKAGE_NAME=raspberry-pi-os_armv6
+PACKAGE_NAME=ubuntu-22.04_armv8
 PACKAGE_DIR="`pwd`/_package/$PACKAGE_NAME"
 
 set -ex
